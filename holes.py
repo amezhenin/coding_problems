@@ -31,7 +31,7 @@ def alg(a):
 
     sum = 0
     for i in a.lower():
-        sum += HOLES[i]
+        sum += HOLES[i]  # simple dict can be used here: HOLES.get(i, 0)
     return sum
 
 
