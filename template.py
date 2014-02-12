@@ -26,7 +26,7 @@ def read_n_array(fn=int):
 def read_two(fn=int):
     """
     Read two integers from input
-    :return:
+    :return: tuple(int, int)
     """
     nx = raw_input()
     nx = nx.split()
