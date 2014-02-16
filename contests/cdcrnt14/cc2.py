@@ -33,7 +33,7 @@ def fib(N):
         res.append((res[-1] + res[-2]) % MAX)
     return res
 
-FIBS = fib(1100010)
+FIBS = fib(1000010)
 
 
 def alg(a, b, r):
@@ -64,7 +64,7 @@ def alg(a, b, r):
     k = a
 
     res = FIBS[r-1] * n + FIBS[r] * k
-    return res
+    return res % MAX
 
 
 if __name__ == "__main__":
