@@ -22,6 +22,10 @@ for calculation fibonacci numbers:
 F(2n-1) = F(n-1)^2 + F(n)^2
 F(2n) = (2F(n-1) + F(n)) * F(n)
 
+In this manner, you need only log(N) steps to get N-th fib. number.
+This is also useful article:
+
+http://fusharblog.com/solving-linear-recurrence-for-programming-contest/
 """
 
 MAX = 10**9+7
