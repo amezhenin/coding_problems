@@ -16,6 +16,9 @@ Output:
 1
 2
 
+This solution was accepted, btw:
+http://www.codechef.com/viewsolution/3417141
+This means that this solution is also correct, but not as fast as C++
 """
 
 MAX = 10**9+7
@@ -60,12 +63,15 @@ def alg(a, b, r):
         return b
 
     a, b = min(a, b), max(a, b)
+
+    # This could be simplified to only this:
+    #return (FIBS[r-1]*b+FIBS[r-2]*a) % MAX
+
     n = b - a
     k = a
 
     res = FIBS[r-1] * n + FIBS[r] * k
     return res % MAX
-
 
 if __name__ == "__main__":
 
