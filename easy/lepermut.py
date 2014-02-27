@@ -46,19 +46,24 @@ def alg(a):
     False
     >>> alg([1, 3, 2, 4])
     True
+    >>> alg([2, 3, 4, 5, 1])
+    False
+    >>> alg([5, 1, 2, 3, 4])
+    False
+    >>> alg([1, 2, 4, 5, 3])
+    False
     """
+
     '''
-    # Initial (wrong) solution
-    max = a[0]
-    for i in xrange(1, len(a)):
+    # Initial (wrong) solution, here is cases where you will get wrong answer:
+    max = 0
+    for i in xrange(len(a)):
         if a[i] > max:
             max = a[i]
             continue
         if max != a[i-1]:
             return False
-
     return True
-
 
     # straight forward solution
     n = len(a)
