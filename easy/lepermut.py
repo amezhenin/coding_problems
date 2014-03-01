@@ -76,7 +76,7 @@ def alg(a):
 
     # Best solution
     for i in a:
-        if (a[i-1]-i)*(a[i-1]-i) > 1:
+        if abs(a[i-1]-i) > 1:
             return False
     return True
 
