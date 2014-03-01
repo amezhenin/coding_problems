@@ -46,6 +46,8 @@ def alg(a):
     False
     >>> alg([1, 3, 2, 4])
     True
+    >>> alg([2, 1, 4, 3])
+    True
     >>> alg([2, 3, 4, 5, 1])
     False
     >>> alg([5, 1, 2, 3, 4])
