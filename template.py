@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-http://www.codechef.com/problems/<problem name>
+http://www.codechef.com/problems/<problem namer>
 
 Testing:
     nosetests --with-doctest <file>
@@ -11,6 +11,17 @@ Input:
 Output:
 ...
 """
+
+
+def read_n_array(fn=int):
+    """
+    Read array of integers with leading N. Optional param can change
+    conversion to function to float.
+    :return tuple (N, list)
+    """
+    n = input()
+    a = map(fn, raw_input().split())
+    return n, a
 
 
 def read_two(fn=int):
