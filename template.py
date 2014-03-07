@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-http://www.codechef.com/problems/<problem namer>
+http://www.codechef.com/problems/<problem name>
 
 Testing:
     nosetests --with-doctest <file>
