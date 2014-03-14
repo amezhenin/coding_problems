@@ -34,6 +34,16 @@ def read_two(fn=int):
     return fn(nx[0]), fn(nx[1])
 
 
+def fast_read():
+    from sys import stdin
+    return map(int, stdin.read().split())
+
+
+def fast_write(res):
+    from sys import stdout
+    stdout.write('\n'.join(res)+'\n')
+
+
 def alg():
     """
     >>> alg()
