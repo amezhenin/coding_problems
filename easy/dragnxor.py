@@ -19,8 +19,6 @@ Output:
 """
 
 
-
-
 def alg(n, a, b):
     """
     >>> alg(3, 5, 4)
