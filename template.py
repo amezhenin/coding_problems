@@ -20,8 +20,6 @@ Python cheat sheet:
 """
 
 
-
-
 def alg():
     """
     >>> alg()
@@ -29,6 +27,7 @@ def alg():
     >>> alg()
     """
     pass
+
 
 if __name__ == "__main__":
 
