@@ -35,7 +35,6 @@ object Main {
 
 
   def main(args : Array[String]) = {
-    val (x, y) = (1, 2);
     for (i <- 0 until readInt()) {
       val Array(x1, x2) = readLine().split(" ").map(_.toInt)
       val res = alg(x1, x2)
