@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """
 
 
 Testing:
     nosetests --with-doctest <file>
 
-Python cheat sheet:
+Python 2 cheat sheet:
 
     n = input()
     nx = raw_input()
@@ -17,6 +17,14 @@ Python cheat sheet:
     # fast write, most of the time "print" is OK
     from sys import stdout
     stdout.write('\n'.join(res)+'\n')
+
+Python 3 cheat sheet:
+    n = int(input())
+    a, b, c = map(int, input().split())
+    nn     = [map(int, input().split()) for i in range(n)]
+    nn_gen = (map(int, input().split()) for i in range(n))
+
+
 """
 
 
@@ -32,4 +40,4 @@ def alg():
 if __name__ == "__main__":
 
     for _ in range(input()):
-        print alg()
+        print(alg())
