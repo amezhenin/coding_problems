@@ -1,5 +1,13 @@
 import sys
 
+"""
+Ideas:
+ * Target brew + estimate num steps to reach + evaluate by cost/num_steps
+ * resources are added to the score in the end -> produce blue on the last steps
+ * you can earn blue by learning first spells with tax attached tto it
+ * multi cast spells that only produce 
+"""
+
 
 class Brew:
     def __init__(self, action_id, delta, price):
@@ -15,17 +23,21 @@ class Brew:
 
 
 class Cast:
-    def __init__(self, action_id, delta, price, castable):
+    def __init__(self, action_id, delta, castable):
         self.action_id = action_id
         self.delta = delta
-        self.price = price
         self.castable = castable
 
 
     def can_use(self, inv):
+        sum = 0
         for d, i in zip(self.delta, inv):
             if d + i < 0:
                 return False
+            sum += d + i
+        # we can't have more than 10 items in inventory
+        if sum > 10:
+            return False
         return self.castable
 
 
@@ -63,7 +75,7 @@ class State:
             # repeatable = repeatable != "0"  # ignore in this league
 
             if action_type == "CAST":
-                cast = Cast(action_id, [delta_0, delta_1, delta_2, delta_3], price, castable)
+                cast = Cast(action_id, [delta_0, delta_1, delta_2, delta_3], castable)
                 self.casts.append(cast)
             elif action_type == "BREW":
                 brew = Brew(action_id, [delta_0, delta_1, delta_2, delta_3], price)
@@ -88,6 +100,7 @@ class State:
                 return
 
         deficit = [0, 0, 0, 0]
+        multiplier = [8, 4, 2, 1]
 
         for b in self.brews:
             print("Brew %s Deficit %s" % (b.delta, deficit), file=sys.stderr, flush=True)
@@ -98,15 +111,31 @@ class State:
                 if d < 0 and deficit[idx] < -d:
                     deficit[idx] = -d
 
-        for c in self.casts:
-            if c.can_use(self.inv) is True:
-                # cast a spell only if it lowers the deficit
-                print("Cast %s Deficit %s" % (c.delta, deficit), file=sys.stderr, flush=True)
-                # FIXME: cast reset cast even when no deficit
-                for d, cd in zip(deficit, c.delta):
-                    if d > 0 and cd > 0:
-                        print("CAST %s" % c.action_id)
-                        return
+        print("Deficit %s" % deficit, file=sys.stderr, flush=True)
+
+        can_cast = list(filter(lambda x: x.can_use(self.inv), self.casts))
+        best_cast = None
+        best_def = 0
+        for c in can_cast:
+            # cast a spell only if it lowers the deficit * multiplier
+            c_def = 0
+            for d, cd, m in zip(deficit, c.delta, multiplier):
+                if d > 0 and cd > 0:
+                    c_def += cd * m
+            print("Cast %s Score %s" % (c.delta, c_def), file=sys.stderr, flush=True)
+            if c_def > best_def:
+                best_def = c_def
+                best_cast = c
+
+        if best_cast:
+            print("CAST %s" % best_cast.action_id)
+            return
+
+        # # FIX for a problem, when no inv_0 is needed
+        # if len(can_cast) > 0:
+        #     print("Force cast", file=sys.stderr, flush=True)
+        #     print("CAST %s" % can_cast[0].action_id)
+        #     return
 
         # Write an action using print
         # To debug: print("Debug messages...", file=sys.stderr, flush=True)
