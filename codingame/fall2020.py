@@ -1,5 +1,8 @@
 import sys
 
+# how many turns we will spend on learning spells
+LEARN_TURNS = 8
+
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -25,6 +28,7 @@ def explore(node, move):
         move.append(node)
     pass
 
+
 # Classes
 
 
@@ -40,7 +44,7 @@ def init_node(node):
 
 # create graph
 
-def graph(orders, inventory, sp):
+def graph(orders, inventory, spells):
     need = {}
 
     for order in orders:
@@ -50,34 +54,34 @@ def graph(orders, inventory, sp):
         need["inv3"] = 77 if inventory["d3"] + order["d3"] >= 0 else inventory["d3"] + order["d3"]
 
         if need["inv0"] != 77:
-            for i in sp:
+            for i in spells:
                 if i["d0"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
-                graph(order["links"], inventory, sp)
+                graph(order["links"], inventory, spells)
         elif need["inv1"] != 77:
-            for i in sp:
+            for i in spells:
                 if i["d1"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
-                graph(order["links"], inventory, sp)
+                graph(order["links"], inventory, spells)
         elif need["inv2"] != 77:
-            for i in sp:
+            for i in spells:
                 if i["d2"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
-                graph(order["links"], inventory, sp)
+                graph(order["links"], inventory, spells)
         elif need["inv3"] != 77:
-            for i in sp:
+            for i in spells:
                 if i["d3"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
-                graph(order["links"], inventory, sp)
-    for i in sp:
+                graph(order["links"], inventory, spells)
+    for i in spells:
         i["discovered"] = False
     for i in orders:
         i["discovered"] = False
@@ -89,9 +93,9 @@ def learn_first_spell(spells):
 
 
 def make_step(turn):
-    add_orders = []
-    add_spells = []
-    add_learned_spells = []
+    orders = []
+    spells = []
+    spell_book = []
     best_move = []
 
     action_count = int(input())
@@ -117,7 +121,7 @@ def make_step(turn):
                 "id": action_id,
                 "price": price,
             })
-            add_orders.append(node)
+            orders.append(node)
 
         if action_type == "CAST":
             node = init_node({
@@ -128,7 +132,7 @@ def make_step(turn):
                 "id": action_id,
                 "castable": castable,
             })
-            add_spells.append(node)
+            spells.append(node)
 
         if action_type == "LEARN":
             node = init_node({
@@ -142,7 +146,7 @@ def make_step(turn):
                 "taxcount": tax_count,
                 "taxindex": tome_index,
             })
-            add_learned_spells.append(node)
+            spell_book.append(node)
     pass
     inv = list(map(int, input().split()))
     inv = init_node({
@@ -155,34 +159,37 @@ def make_step(turn):
     # not used right now
     opp_inv = map(int, input().split())
 
-    # FIXME: cast first spell on first move to have more d0?
+    # cast first spell on first move to have more d0
     if turn == 1:
-        for spl in add_spells:
+        for spl in spells:
             if spl["d0"] == 2 and spl["d1"] == 0 and spl["d2"] == 0 and spl["d3"] == 0:
                 print(f'CAST {spl["id"]}')
                 return
 
-    for od in add_orders:
+    # brew if we can
+    for od in orders:
         if inv["d0"] + od["d0"] >= 0 and inv["d1"] + od["d1"] >= 0 and inv["d2"] + od["d2"] >= 0 and inv["d3"] + od["d3"] >= 0:
             print(f'BREW {od["id"]}')
             return
 
-    # FIXME: take spell without consumable inv first
-    for als in add_learned_spells:
+    # try to learn spell without consumable inv first
+    for als in spell_book:
         if als["d0"] >= 0 and als["d1"] >= 0 and als["d2"] >= 0 and als["d3"] >= 0 and als["taxindex"] <= inv["d0"]:
             print(f'LEARN {als["id"]}')
             return
 
-    if turn <= 8:
-        learn_first_spell(add_learned_spells)
+    # learn spells at the early stage of the game
+    if turn <= LEARN_TURNS:
+        learn_first_spell(spell_book)
         return
 
-    for ao in add_orders:
-        graph([ao], inv, add_spells)
-    dfs([add_orders[0], add_orders[1], add_orders[2], add_orders[3], add_orders[4]], best_move)
+    for ao in orders:
+        graph([ao], inv, spells)
+    dfs([orders[0], orders[1], orders[2], orders[3], orders[4]], best_move)
 
+    # default action if we don't have best move
     if len(best_move) == 0:
-        learn_first_spell(add_learned_spells)
+        learn_first_spell(spell_book)
         return
 
     for bm in best_move:
@@ -206,8 +213,8 @@ def make_step(turn):
         print('REST')
         return
 
+    # log("Best move: %s" % best_move[-1])
     k = 1
-    log("Best move: %s" % best_move[-1])
     if best_move[-1]["repeatable"] == 1:
         while best_move[-1]["node_sum"] + inv["node_sum"] <= 10 and best_move[-1]["d0"] + inv["d0"] >= 0 and \
                 best_move[-1]["d1"] + inv["d1"] >= 0 and best_move[-1]["d2"] + inv["d2"] >= 0 and \
