@@ -29,9 +29,6 @@ def explore(node, move):
     pass
 
 
-# Classes
-
-
 def init_node(node):
     node["best"] = 0
     node["discovered"] = False
@@ -45,41 +42,22 @@ def init_node(node):
 # create graph
 
 def graph(orders, inventory, spells):
-    need = [77, 77, 77, 77]
+    need = set()
 
     for order in orders:
-        for i in range(4):
-            key = "d%s" % i
-            need[i] = 77 if inventory[key] + order[key] >= 0 else inventory[key] + order[key]
+        for key in ["d0", "d1", "d2", "d3"]:
+            if inventory[key] + order[key] < 0:
+                need.add(key)
 
-        if need[0] != 77:
+        if len(need) > 0:
+            key = need.pop()
             for i in spells:
-                if i["d0"] > 0 and not order["discovered"]:
+                if i[key] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
                 graph(order["links"], inventory, spells)
-        elif need[1] != 77:
-            for i in spells:
-                if i["d1"] > 0 and not order["discovered"]:
-                    order["links"].append(i)
-                    i["discovered"] = True
-            if len(order["links"]) != 0:
-                graph(order["links"], inventory, spells)
-        elif need[2] != 77:
-            for i in spells:
-                if i["d2"] > 0 and not order["discovered"]:
-                    order["links"].append(i)
-                    i["discovered"] = True
-            if len(order["links"]) != 0:
-                graph(order["links"], inventory, spells)
-        elif need[3] != 77:
-            for i in spells:
-                if i["d3"] > 0 and not order["discovered"]:
-                    order["links"].append(i)
-                    i["discovered"] = True
-            if len(order["links"]) != 0:
-                graph(order["links"], inventory, spells)
+
     for i in spells:
         i["discovered"] = False
     for i in orders:
