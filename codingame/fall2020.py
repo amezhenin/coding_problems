@@ -45,36 +45,35 @@ def init_node(node):
 # create graph
 
 def graph(orders, inventory, spells):
-    need = {}
+    need = [77, 77, 77, 77]
 
     for order in orders:
-        need["inv0"] = 77 if inventory["d0"] + order["d0"] >= 0 else inventory["d0"] + order["d0"]
-        need["inv1"] = 77 if inventory["d1"] + order["d1"] >= 0 else inventory["d1"] + order["d1"]
-        need["inv2"] = 77 if inventory["d2"] + order["d2"] >= 0 else inventory["d2"] + order["d2"]
-        need["inv3"] = 77 if inventory["d3"] + order["d3"] >= 0 else inventory["d3"] + order["d3"]
+        for i in range(4):
+            key = "d%s" % i
+            need[i] = 77 if inventory[key] + order[key] >= 0 else inventory[key] + order[key]
 
-        if need["inv0"] != 77:
+        if need[0] != 77:
             for i in spells:
                 if i["d0"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
                 graph(order["links"], inventory, spells)
-        elif need["inv1"] != 77:
+        elif need[1] != 77:
             for i in spells:
                 if i["d1"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
                 graph(order["links"], inventory, spells)
-        elif need["inv2"] != 77:
+        elif need[2] != 77:
             for i in spells:
                 if i["d2"] > 0 and not order["discovered"]:
                     order["links"].append(i)
                     i["discovered"] = True
             if len(order["links"]) != 0:
                 graph(order["links"], inventory, spells)
-        elif need["inv3"] != 77:
+        elif need[3] != 77:
             for i in spells:
                 if i["d3"] > 0 and not order["discovered"]:
                     order["links"].append(i)
@@ -183,9 +182,9 @@ def make_step(turn):
         learn_first_spell(spell_book)
         return
 
-    for ao in orders:
-        graph([ao], inv, spells)
-    dfs([orders[0], orders[1], orders[2], orders[3], orders[4]], best_move)
+    # for ao in orders:
+    graph(orders, inv, spells)
+    dfs(orders, best_move)
 
     # default action if we don't have best move
     if len(best_move) == 0:
