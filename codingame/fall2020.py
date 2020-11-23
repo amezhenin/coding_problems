@@ -1,7 +1,7 @@
 import sys
 
 # how many turns we will spend on learning spells
-LEARN_TURNS = 8
+LEARN_TURNS = 7
 
 
 def log(msg):
@@ -33,13 +33,16 @@ def init_node(node):
     node["best"] = 0
     node["discovered"] = False
     node["links"] = []
-    node["node_sum"] = node["d0"] + node["d1"] + node["d2"] + node["d3"]
     if "repeatable" not in node:
         node["repeatable"] = 0
     return node
 
 
+def node_sum(node):
+    return node["d0"] + node["d1"] + node["d2"] + node["d3"]
+
 # create graph
+
 
 def graph(orders, inventory, spells):
     need = set()
@@ -108,6 +111,7 @@ def make_step(turn):
                 "d3": delta_3,
                 "id": action_id,
                 "castable": castable,
+                "repeatable": repeatable,
             })
             spells.append(node)
 
@@ -137,11 +141,11 @@ def make_step(turn):
     opp_inv = map(int, input().split())
 
     # cast first spell on first move to have more d0
-    if turn == 1:
-        for spl in spells:
-            if spl["d0"] == 2 and spl["d1"] == 0 and spl["d2"] == 0 and spl["d3"] == 0:
-                print(f'CAST {spl["id"]}')
-                return
+    # if turn == 1:
+    #     for spl in spells:
+    #         if spl["d0"] == 2 and spl["d1"] == 0 and spl["d2"] == 0 and spl["d3"] == 0:
+    #             print(f'CAST {spl["id"]}')
+    #             return
 
     # brew if we can
     for od in orders:
@@ -171,8 +175,8 @@ def make_step(turn):
 
     for bm in best_move:
         if bm["d0"] + inv["d0"] < 0 or bm["d1"] + inv["d1"] < 0 or bm["d2"] + inv["d2"] < 0 or \
-                bm["d3"] + inv["d3"] < 0 or bm["node_sum"] + inv["node_sum"] > 10:
-            bm["best"] -= 100
+                bm["d3"] + inv["d3"] < 0 or node_sum(bm) + node_sum(inv) > 10:
+            bm["best"] -= 999
 
         if bm["castable"] == 1:
             bm["best"] += 5
@@ -193,14 +197,21 @@ def make_step(turn):
     # log("Best move: %s" % best_move[-1])
     k = 1
     if best_move[-1]["repeatable"] == 1:
-        while best_move[-1]["node_sum"] + inv["node_sum"] <= 10 and best_move[-1]["d0"] + inv["d0"] >= 0 and \
-                best_move[-1]["d1"] + inv["d1"] >= 0 and best_move[-1]["d2"] + inv["d2"] >= 0 and \
-                best_move[-1]["d2"] + inv["d2"] >= 0:
+        k = 0
+        while node_sum(best_move[-1]) + node_sum(inv) <= 10 and \
+                best_move[-1]["d0"] + inv["d0"] >= 0 and \
+                best_move[-1]["d1"] + inv["d1"] >= 0 and \
+                best_move[-1]["d2"] + inv["d2"] >= 0 and \
+                best_move[-1]["d3"] + inv["d3"] >= 0:
+            # log(f"Inv {k}: {inv}")
             inv["d0"] += best_move[-1]["d0"]
             inv["d1"] += best_move[-1]["d1"]
             inv["d2"] += best_move[-1]["d2"]
             inv["d3"] += best_move[-1]["d3"]
             k += 1
+    # log(f"Inv {k}: {inv}")
+    if k > 1:
+        log(f"Repeated {k}")
     print(f'CAST {best_move[-1]["id"]} {k}')
     return
 
