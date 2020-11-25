@@ -24,6 +24,10 @@ Fast IO:
     from sys import stdout
     _ = stdout.write('\n'.join(res)+'\n')
 
+# CodinGame debugging
+import sys
+def log(msg):
+    print(msg, file=sys.stderr, flush=True)
 """
 
 
