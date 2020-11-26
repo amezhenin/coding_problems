@@ -1,3 +1,6 @@
+"""
+https://www.codingame.com/multiplayer/bot-programming/fall-challenge-2020
+"""
 import sys
 
 # how many turns we will spend on learning spells
