@@ -48,8 +48,11 @@ while 1:i();n=(x>h)-(x<h);m=(y>v)-(y<v);h+=n;v+=m;print("SN "[m-1:m]+"EW "[n-1:n
 
 i=input
 x,y,h,v=map(int,i().split())
-while 1:i();n=(x>h)-(x<h);m=(y>v)-(y<v);h+=n;v+=m;print("SN "[m-1:m]+"EW "[n-1:n])
-
+q=["S"]*(y-v)+["N"]*(v-y)+[""] * 20
+g=["E"]*(x-h)+["W"]*(h-x)
+while 1:
+    i()
+    print("%s%s"%(next(q),next(g)))
 
 """ 149
 i=input
@@ -73,5 +76,19 @@ for j in d[t[0]]:
     i()
     print(j)
 
+
+# experiments
+e = [" "] * 20
+e[::2]=["N"]*10
+e[:10:2]=["S"]*5
+
 """
 
+"""
+David:
+
+i,a=input,abs
+x,y,X,Y=map(int,i().split())
+u,w,A,B=a(X-x),a(Y-y),'SN'[Y>y],'EW'[X>x]
+for s in [[A,B][u>w]]*a(u-w)+[A+B]*99:i();print(s)
+"""
