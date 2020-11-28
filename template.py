@@ -28,6 +28,12 @@ Fast IO:
 import sys
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
+
+
+import collections
+Row = collections.namedtuple("Row", ["a", "b", "c"])
+Row = collections.namedtuple("Row", "a b c"])
+
 """
 
 

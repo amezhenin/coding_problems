@@ -41,7 +41,19 @@ class Game:
 
         nx = bot.cp_x - int(bot.vx * COMPENSATION)
         ny = bot.cp_y - int(bot.vy * COMPENSATION)
-        print("%s %s %s %s" % (nx, ny, thrust, thrust))
+        print("%s %s %s CP:%s" % (nx, ny, thrust, thrust))
+
+
+    def attack(self, bot, en1, en2):
+        d1 = math.hypot(abs(bot.x - en1.x), abs(bot.y - en1.y))
+        d2 = math.hypot(abs(bot.x - en2.x), abs(bot.y - en2.y))
+        enemy, dist = en1, d1
+        if d1 > d2:
+            enemy, dist = en2, d2
+        nx = enemy.x - int(enemy.vx * COMPENSATION)
+        ny = enemy.y - int(enemy.vy * COMPENSATION)
+        thrust = "SHIELD" if dist < 1100 else 100
+        print("%s %s %s AT:%s" % (nx, ny, thrust, thrust))
 
 
     def next_round(self):
@@ -52,7 +64,9 @@ class Game:
         en2 = self.read_bot()
 
         self.move_to_checkpoint(bot1)
-        print("0 0 0")
+        #self.move_to_checkpoint(bot2)
+        self.attack(bot2, en1, en2)
+
 
 
 
