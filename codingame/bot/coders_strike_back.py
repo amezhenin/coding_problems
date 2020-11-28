@@ -1,31 +1,62 @@
 import math
+import collections
+
+Bot = collections.namedtuple("Bot", "x y vx vy angle cp_id cp_x cp_y")
 
 COMPENSATION = 3
-x = 0
-y = 0
-prevX = 0
-prevy = 0
 
-while True:
-    previousX = x
-    previousY = y
 
-    x, y, next_checkpoint_x, next_checkpoint_y, next_checkpoint_dist, next_checkpoint_angle = [int(i) for i in input().split()]
-    opponent_x, opponent_y = [int(i) for i in input().split()]
+class Game:
+    def __init__(self):
+        self.laps = int(input())
+        cp_count = int(input())
+        self.checkpoints = []
+        for i in range(cp_count):
+            x, y = map(int, input().split())
+            self.checkpoints.append((x, y))
 
-    if abs(next_checkpoint_angle) > 90:
-        thrust = 0
-    elif next_checkpoint_dist < 1500:
-        thrust = 30
-    elif next_checkpoint_dist < 650:
-        thrust = 20
-    elif next_checkpoint_dist > 5000 and abs(next_checkpoint_angle) < 5:
-        thrust = "BOOST"
-    elif next_checkpoint_dist < 500 and math.hypot(abs(x - opponent_x), abs(y - opponent_y)) < 850:
-        thrust = "SHIELD"
-    else:
-        thrust = 100
 
-    nx = next_checkpoint_x - int((x - previousX) * COMPENSATION)
-    ny = next_checkpoint_y - int((y - previousY) * COMPENSATION)
-    print("%s %s %s %s" %(nx, ny, thrust, thrust))
+    def read_bot(self):
+        x, y, vx, vy, angle, cp_id = map(int, input().split())
+        bot = Bot(x, y, vx, vy, angle, cp_id, self.checkpoints[cp_id][0], self.checkpoints[cp_id][1])
+        return bot
+
+
+    def move_to_checkpoint(self, bot):
+
+        dist = math.hypot(abs(bot.x - bot.cp_x), abs(bot.y - bot.cp_y))
+
+        # if abs(next_checkpoint_angle) > 90:
+        #     thrust = 0
+        if dist < 1500:
+            thrust = 30
+        elif dist < 1050:
+            thrust = 20
+        elif dist > 5000:  # and abs(next_checkpoint_angle) < 5:
+            thrust = "BOOST"
+        # elif next_checkpoint_dist < 500 and math.hypot(abs(x - opponent_x), abs(y - opponent_y)) < 850:
+        #     thrust = "SHIELD"
+        else:
+            thrust = 100
+
+        nx = bot.cp_x - int(bot.vx * COMPENSATION)
+        ny = bot.cp_y - int(bot.vy * COMPENSATION)
+        print("%s %s %s %s" % (nx, ny, thrust, thrust))
+
+
+    def next_round(self):
+        bot1 = self.read_bot()
+        bot2 = self.read_bot()
+
+        en1 = self.read_bot()
+        en2 = self.read_bot()
+
+        self.move_to_checkpoint(bot1)
+        print("0 0 0")
+
+
+
+if __name__ == "__main__":
+    game = Game()
+    while True:
+        game.next_round()
