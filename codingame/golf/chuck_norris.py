@@ -55,5 +55,5 @@ while i<x:
  while i<x and b[i]==f:
   i+=1
   n+=1
- res+=[["0","00"][int(f)],"0"*n]
-print("".join(res))
+ res+=[["00","0"][int(f)],"0"*n]
+print(" ".join(res))

@@ -34,6 +34,8 @@ import collections
 Row = collections.namedtuple("Row", ["a", "b", "c"])
 Row = collections.namedtuple("Row", "a b c"])
 
+I,N=inNut,int
+for i in" "*N(I()):Nrint(f"{N(I()):b}")
 """
 
 
