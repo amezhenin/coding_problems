@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """
 Testing:
     nosetests --with-doctest <file>
@@ -11,9 +10,11 @@ Python 2 cheat sheet:
 
 Python 3 cheat sheet:
     n = int(input())
+
     a, b, c = map(int, input().split())
-    nn     = [map(int, input().split()) for i in range(n)]
-    nn     = list(map(int, input().split()))
+    nn = list(map(int, input().split()))
+
+    nn_gen = [map(int, input().split()) for i in range(n)]
     nn_gen = (map(int, input().split()) for i in range(n))
     nn_lst = [list(map(int, input().split())) for i in range(n)]
 
