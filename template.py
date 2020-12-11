@@ -38,6 +38,11 @@ Row = collections.namedtuple("Row", "a b c"])
 
 I,N=input,int
 for i in" "*N(I()):print(f"{N(I()):b}")
+
+# acts like " ".join(array), but can have logic inside
+f=0
+for i in range(n):
+ if <condition>:print(end=" "*f+f"{<something>}");f=1
 """
 
 
