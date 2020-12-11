@@ -18,6 +18,7 @@ Bot = collections.namedtuple("Bot", "x y vx vy angle cp_id cp_x cp_y")
 
 COMPENSATION = 2
 CP_RADIUS = 600
+BOT_RADIUS = 400
 MAX_THRUST = 100
 
 
@@ -43,7 +44,8 @@ def is_same_direction(bot, speed, checkpoint):
 class Game:
     def __init__(self):
         self.round = 0
-        self.laps = int(input())
+        self.enemies = []
+        self.laps = int(input())  # FIXME: start using this to determine last checkpoint
         cp_count = int(input())
         self.checkpoints = []
         for i in range(cp_count):
@@ -59,13 +61,13 @@ class Game:
 
 
     def adjust_cp_coord(self, bot):
-        log(f"Bot: {bot}")
+        # log(f"Bot: {bot}")
         if bot.vx != 0:
             t = (bot.cp_x - bot.x) / bot.vx
         elif bot.vy != 0:
             t = (bot.cp_y - bot.y) / bot.vy
         else:
-            log(f"Zero speed")
+            # log(f"Zero speed")
             return bot.cp_x, bot.cp_y
 
         px = (t * bot.vx) + bot.x
@@ -73,7 +75,7 @@ class Game:
 
         # minimum distance to checkpoint center
         dist = LA.norm(np.array([bot.cp_x - px, bot.cp_y - py]))
-        log(f"Min CP dist: {dist} in {t} rounds")
+        # log(f"Min CP dist: {dist} in {t} rounds")
         if dist < CP_RADIUS:
             if t < 3:
                 next_cp_id = (bot.cp_id + 1) % len(self.checkpoints)
@@ -102,21 +104,34 @@ class Game:
             thrust = "BOOST"
         elif not same_dir:
             thrust = 0
-        elif dist < 1500:
+        elif dist < 2000:
             thrust = 30
-        elif dist < 1050:
+        elif dist < 1000:
             thrust = 20
         # elif next_checkpoint_dist < 500 and math.hypot(abs(x - opponent_x), abs(y - opponent_y)) < 850:
         #     thrust = "SHIELD"
         else:
             thrust = 100
 
+        if self.shield_needed(bot):
+            thrust = "SHIELD"
+
         nx, ny = self.adjust_cp_coord(bot)
 
         print("%s %s %s CP:%s" % (int(nx), int(ny), thrust, thrust))
 
 
-    def attack(self, bot, en1, en2):
+    def shield_needed(self, bot):
+        min_dist = BOT_RADIUS * 100
+        for en in self.enemies:
+            d = math.hypot(abs(bot.x + bot.vx - en.x - en.vx), abs(bot.y + bot.vy - en.y - en.vy))
+            min_dist = min(min_dist, d)
+        log(f"Min enemy dist {min_dist}")
+        return min_dist <= (BOT_RADIUS + MAX_THRUST) * 2
+
+
+    def attack(self, bot):
+        en1, en2 = self.enemies
         # d1 = math.hypot(abs(bot.x - en1.x), abs(bot.y - en1.y))
         # d2 = math.hypot(abs(bot.x - en2.x), abs(bot.y - en2.y))
         # enemy, dist = en1, d1
@@ -127,7 +142,9 @@ class Game:
 
         nx = enemy.x - int(enemy.vx * COMPENSATION)
         ny = enemy.y - int(enemy.vy * COMPENSATION)
-        thrust = "SHIELD" if dist < 1100 else 100
+        thrust = 100
+        if self.shield_needed(bot):
+            thrust = "SHIELD"
         print("%s %s %s AT:%s" % (nx, ny, thrust, thrust))
 
 
@@ -139,10 +156,11 @@ class Game:
 
         en1 = self.read_bot()
         en2 = self.read_bot()
+        self.enemies = [en1, en2]
 
         self.move_to_checkpoint(bot1)
         #self.move_to_checkpoint(bot2)
-        self.attack(bot2, en1, en2)
+        self.attack(bot2)
 
 
 
