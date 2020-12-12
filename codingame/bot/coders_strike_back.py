@@ -46,6 +46,9 @@ class Bot:
         return f"ID_{self.id} ({point[0]}, {point[1]})"
 
 
+    def detailed(self):
+        return f"{str(self)} {str(self.cp_id)} {str(self.pos)} {str(self.v)}"
+
     def next_checkpoint(self):
         """
         Return checkpoint AFTER next one
@@ -69,22 +72,23 @@ class Bot:
         if LA.norm(self.v) != 0:
             t = min((self.cp - self.pos) / (self.v + 1e-20))
         else:
-            # log(f"Zero speed")
+            # log("Zero speed")
             return self.cp, False
 
         pos = (t * self.v) + self.pos
 
-        # FIXME: there is a bug here :(
         # minimum distance to checkpoint center
         dist = LA.norm(self.cp - pos)
         # log(f"Min CP dist: {dist} in {t} rounds")
         if dist < CP_RADIUS:
-            if t < 2.5:
-                # log(f"Switching to CP after next")
+            if 0 < t < 3.5:
+                # log("Switching to CP after next")
                 next_cp = self.next_checkpoint()
                 return next_cp, True
+            # log("Keeping course to point inside CP")
             return pos, False
 
+        # log("Turning and moving to CP")
         new = self.cp - self.v * COMPENSATION
         return new, False
 
@@ -113,7 +117,7 @@ class Game:
         self.bots = [None, None]
         self.enemies = [None, None]
         self.laps = int(input())  # FIXME: start using this to determine last checkpoint
-        log(f"Laps: {self.laps}")
+        # log(f"Laps: {self.laps}")
         cp_count = int(input())
         self.checkpoints = []
         for i in range(cp_count):
@@ -157,7 +161,6 @@ class Game:
     def shield_needed(self, bot):
         min_dist = BOT_RADIUS * 100
         for en in self.enemies:
-            # d = math.hypot(abs(bot.x + bot.vx - en.x - en.vx), abs(bot.y + bot.vy - en.y - en.vy))
             d = LA.norm(bot.pos + bot.v - (en.pos + en.v))
             min_dist = min(min_dist, d)
         # log(f"Min enemy dist {min_dist}")
@@ -203,8 +206,25 @@ class Game:
         en2 = self.read_bot(2, self.enemies[1])
         self.enemies = [en1, en2]
 
-        self.move_to_checkpoint(self.bots[0])
-        self.attack(self.bots[1])
+        # before first checkpoint we are racing, because anything can happen there
+        if self.bots[0].cp_sum + self.bots[1].cp_sum == 0:
+            self.move_to_checkpoint(self.bots[0])
+            self.move_to_checkpoint(self.bots[1])
+        else:
+            # after first CP we can see who is leader
+            leader, attaker = Bot.sort(*self.bots)
+            log(f"Bots:    {leader} {attaker}")
+
+            # we have to process bots in order
+            if self.bots[0] is leader:
+                self.move_to_checkpoint(self.bots[0])
+                self.attack(self.bots[1])
+            else:
+
+                self.attack(self.bots[0])
+                self.move_to_checkpoint(self.bots[1])
+            pass
+        pass
 
 
 
