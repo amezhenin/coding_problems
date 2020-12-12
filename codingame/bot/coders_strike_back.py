@@ -4,11 +4,6 @@ import collections
 import numpy as np
 from numpy import linalg as LA
 
-"""
-TODO:
-    * attach enemy ahead in race, not closest one
-"""
-
 
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
@@ -39,6 +34,7 @@ def is_same_direction(bot, speed, checkpoint):
     #     return 1.0
     # penalty = math.sqrt(2) - l
     return l > math.sqrt(2)
+
 
 
 class Game:
@@ -104,17 +100,17 @@ class Game:
             thrust = "BOOST"
         elif not same_dir:
             thrust = 0
-        elif dist < 2000:
-            thrust = 30
+        elif dist < 1500:
+            thrust = 40
         elif dist < 1000:
-            thrust = 20
+            thrust = 30
         # elif next_checkpoint_dist < 500 and math.hypot(abs(x - opponent_x), abs(y - opponent_y)) < 850:
         #     thrust = "SHIELD"
         else:
             thrust = 100
 
-        if self.shield_needed(bot):
-            thrust = "SHIELD"
+        # if self.shield_needed(bot):
+        #     thrust = "SHIELD"
 
         nx, ny = self.adjust_cp_coord(bot)
 
@@ -127,7 +123,7 @@ class Game:
             d = math.hypot(abs(bot.x + bot.vx - en.x - en.vx), abs(bot.y + bot.vy - en.y - en.vy))
             min_dist = min(min_dist, d)
         log(f"Min enemy dist {min_dist}")
-        return min_dist <= (BOT_RADIUS + MAX_THRUST) * 2
+        return min_dist <= (BOT_RADIUS * 2 + MAX_THRUST)
 
 
     def attack(self, bot):
@@ -138,7 +134,6 @@ class Game:
         # if d1 > d2:
         #     enemy, dist = en2, d2
         enemy = en1 if en1.cp_id >= en2.cp_id else en2
-        dist = math.hypot(abs(bot.x - enemy.x), abs(bot.y - enemy.y))
 
         nx = enemy.x - int(enemy.vx * COMPENSATION)
         ny = enemy.y - int(enemy.vy * COMPENSATION)
