@@ -10,7 +10,9 @@ def log(msg):
 
 
 COMPENSATION = 3
-ATTACK_COMPENSATION = 6
+ATTACK_COMPENSATION = 5
+TURN_AHEAD = 4
+
 CP_RADIUS = 600
 BOT_RADIUS = 400
 MAX_THRUST = 100
@@ -81,9 +83,11 @@ class Bot:
         dist = LA.norm(self.cp - pos)
         # log(f"Min CP dist: {dist} in {t} rounds")
         if dist < CP_RADIUS:
-            if 0 < t < 3.5:
+            if 0 < t < TURN_AHEAD:
                 # log("Switching to CP after next")
                 next_cp = self.next_checkpoint()
+                # alignment = LA.norm(unit_vector(next_cp - self.pos) + unit_vector(self.angle))
+                # log(f"Next CP alignment {alignment}")
                 return next_cp, True
             # log("Keeping course to point inside CP")
             return pos, False
@@ -213,14 +217,12 @@ class Game:
         else:
             # after first CP we can see who is leader
             leader, attaker = Bot.sort(*self.bots)
-            log(f"Bots:    {leader} {attaker}")
-
+            # log(f"Bots:    {leader} {attaker}")
             # we have to process bots in order
             if self.bots[0] is leader:
                 self.move_to_checkpoint(self.bots[0])
                 self.attack(self.bots[1])
             else:
-
                 self.attack(self.bots[0])
                 self.move_to_checkpoint(self.bots[1])
             pass
