@@ -10,7 +10,7 @@ def log(msg):
 
 
 COMPENSATION = 3
-ATTACK_COMPENSATION = 5
+# ATTACK_COMPENSATION = 5
 TURN_AHEAD = 4
 
 CP_RADIUS = 600
@@ -25,6 +25,17 @@ def unit_vector(vector):
 def deg_to_vector(d):
     return unit_vector(np.array([np.cos(np.deg2rad(d)), np.sin(np.deg2rad(d))]))
 
+
+def adj_compensation(v, a, b):
+    speed = LA.norm(v)
+    dist = LA.norm(a-b)
+    if speed == 0:
+        comp = 1
+    else:
+        comp = dist / speed
+        comp = min(comp, COMPENSATION)
+    log(f"Comp: {int(dist)} {int(speed)} {comp}")
+    return v * comp
 
 
 class Bot:
@@ -86,14 +97,14 @@ class Bot:
             if 0 < t < TURN_AHEAD:
                 # log("Switching to CP after next")
                 next_cp = self.next_checkpoint()
-                # alignment = LA.norm(unit_vector(next_cp - self.pos) + unit_vector(self.angle))
-                # log(f"Next CP alignment {alignment}")
-                return next_cp, True
+                alignment = LA.norm(unit_vector(next_cp - self.pos) + unit_vector(self.angle))
+                log(f"Next CP alignment {alignment}")
+                return next_cp, alignment < 1.8
             # log("Keeping course to point inside CP")
             return pos, False
 
-        # log("Turning and moving to CP")
-        new = self.cp - self.v * COMPENSATION
+        log("Turning and moving to CP")
+        new = self.cp - adj_compensation(self.v, self.pos, self.cp)
         return new, False
 
 
@@ -146,10 +157,10 @@ class Game:
             thrust = 0
         # elif dist < 1000:
         #     thrust = 30
-        elif dist < 1500:
-            thrust = 50
-        # elif dist < 2000:
-        #     thrust = 70
+        # elif dist < 1500:
+        #     thrust = 50
+        elif dist < 2000:
+            thrust = 70
         else:
             thrust = 100
 
@@ -184,7 +195,11 @@ class Game:
             new = enemy.next_checkpoint()
         else:
             # If you are closer to enemies CP, attack him
-            new = enemy.pos + (enemy.angle * 100 + enemy.v - bot.v) * ATTACK_COMPENSATION
+            new = enemy.pos + adj_compensation(
+                enemy.angle * 100 + enemy.v - bot.v,
+                enemy.pos,
+                bot.pos
+            )
 
         # new = enemy.pos - enemy.v * COMPENSATION
         # if self.round == 1:
