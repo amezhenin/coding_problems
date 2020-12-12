@@ -1,3 +1,6 @@
+"""
+https://www.codingame.com/multiplayer/bot-programming/coders-strike-back
+"""
 import sys
 import math
 
