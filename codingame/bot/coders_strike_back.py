@@ -18,7 +18,7 @@ TURN_AHEAD = 4
 
 CP_RADIUS = 600
 BOT_RADIUS = 400
-MAX_THRUST = 100
+MAX_THRUST = 200
 
 
 def unit_vector(vector):
@@ -165,7 +165,7 @@ class Game:
         elif dist < 2000:
             thrust = 70
         else:
-            thrust = 100
+            thrust = MAX_THRUST
 
         # if self.shield_needed(bot):
         #     thrust = "SHIELD"
@@ -199,7 +199,7 @@ class Game:
         else:
             # If you are closer to enemies CP, attack him
             new = enemy.pos + adj_compensation(
-                enemy.angle * 100 + enemy.v - bot.v,
+                enemy.angle * MAX_THRUST + enemy.v - bot.v,
                 enemy.pos,
                 bot.pos
             )
@@ -210,7 +210,7 @@ class Game:
         if not bot.is_same_direction(new):
             thrust = 0
         else:
-            thrust = 100
+            thrust = MAX_THRUST
         if self.shield_needed(bot):
             thrust = "SHIELD"
         print("%s %s %s AT:%s" % (int(new[0]), int(new[1]), thrust, thrust))

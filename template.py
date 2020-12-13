@@ -43,6 +43,10 @@ for i in" "*N(I()):print(f"{N(I()):b}")
 f=0
 for i in range(n):
  if <condition>:print(end=" "*f+f"{<something>}");f=1
+
+# another inlined join
+sentence = input().split()
+print(*(sum(map('aeiouAEIOU'.count, i)) for i in sentence))
 """
 
 
