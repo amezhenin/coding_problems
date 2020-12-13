@@ -6,26 +6,33 @@ def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
 
-word = input()
+word = "AZ" #input()
 log(word)
 
-s = []
+s = ""
 forest = [" "] * 30
-
-for i in range(len(word)):
-    fi = i % 30
-    ss = ""
-    # log(f"{word[i]}->{forest[fi]}")
-    while forest[fi] != word[i]:
-        ss += "+"
-        if forest[fi] == "Z":
-            new_c = " "
-        elif forest[fi] == " ":
-            new_c = "A"
+p = 0
+for c in word:
+    try:
+        x = forest.index(c)
+        fs = (x+30 - p) % 30
+        bs = (p+30 - x) % 30
+        if fs <= bs:
+            s += ">" * fs + "."
+            p = (p+fs) % 30
         else:
-            new_c = chr(ord(forest[fi]) + 1)
-        forest[fi] = new_c
-    ss += "."
-    s.append(ss)
-
-print(">".join(s))
+            s += "<" * bs + "."
+            p = (p - bs + 30) % 30
+    except:
+        s += ">"
+        p += 1
+        while forest[p] != c:
+            s += "+"
+            if forest[p] == "Z":
+                forest[p] = " "
+            elif forest[p] == " ":
+                forest[p] = "A"
+            else:
+                forest[p] = chr(ord(forest[p]) + 1)
+        s += "."
+print(s)
