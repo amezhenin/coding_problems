@@ -47,6 +47,22 @@ for i in range(n):
 # another inlined join
 sentence = input().split()
 print(*(sum(map('aeiouAEIOU'.count, i)) for i in sentence))
+
+# import and assign
+C=__import__("collections").Counter
+
+
+# convert any code into shorter version (len must be even!)
+def encode(code):
+    code += " " if len(code) % 2 else ""
+    bcode = bytes(code, "ASCII")
+    res = bcode.decode("U16")
+    return len(res), res
+print(encode(\"""<ascii code>\""")
+
+# usage
+exec(bytes('<UTF-16 chars>','U16')[2:])
+
 """
 
 

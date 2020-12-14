@@ -44,6 +44,9 @@ BEST: 119
 i=input
 x,y,h,v=map(int,i().split())
 while 1:i();n=(x>h)-(x<h);m=(y>v)-(y<v);h+=n;v+=m;print("SN "[m-1:m]+"EW "[n-1:n])
+
+BEST: 121->86, with ; in the end
+exec(bytes('㵩湩異ੴⱸⱹⱨ㵶慭⡰湩ⱴ⡩⸩灳楬⡴⤩眊楨敬ㄠ椺⤨渻⠽㹸⥨⠭㱸⥨活⠽㹹⥶⠭㱹⥶栻㴫㭮⭶洽瀻楲瑮⠨•乓嬢嵭∫䔠≗湛⥝献牴灩⤨㬩','U16')[2:])
 """
 
 i=input
