@@ -15,6 +15,10 @@ def diag_dist(size, x, y):
         s += 1
     return s
 
+
+debute = "STPRQU"
+long = "KLM"  # JE are bad
+
 # Blocking
 
 nb_shapes = int(input())  # number of shapes
@@ -40,8 +44,8 @@ while True:
         col = int(inputs[1])  # column played
         row = int(inputs[2])  # row played
         shape = inputs[3]  # 4 char definition of the played shape
-    valid_moves = [] # number of valid moves
-    for i in range(int(input()) ):
+    valid_moves = []  # number of valid moves
+    for i in range(int(input())):
         inputs = input().split()
         col = int(inputs[0])
         row = int(inputs[1])
@@ -56,17 +60,32 @@ while True:
         if shape[0] > "I":
             points += 1
         points = points + diag_dist(board_size, col, row) / board_size
-        log(points)
+        if shape[0] in debute:
+            points += 1.5
+        if shape[0] in long:
+            points += 1
+        # log(points)
         valid_moves.append((col, row, shape, points))
 
-    #log(valid_moves)
+    log(valid_moves)
 
     # best_points = max(valid_moves, key=lambda x: x[3])[3]
     # log(f"Best points: {best_points}")
     # best_moves = list(filter(lambda x: x[3] == best_points, valid_moves))
     # log(best_moves)
     # move = random.choice(best_moves)
+    # move = None
+    # for c in debute + long:
+    #     if move:
+    #         break
+    #     for m in valid_moves:
+    #         if c in m[2]:
+    #             move = m
+    #             break
+    # if not move:
+    #     log("Max val")
     move = max(valid_moves, key=lambda x: x[3])
+
     log(move)
 
     print(f"{move[0]} {move[1]} {move[2]}")
