@@ -9,26 +9,41 @@ using namespace std;
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
-vector<string> cases;
-vector<int> flags;
+vector<string> all_tests;
+vector<int> all_cows;
+vector<int> all_bulls;
 int n;
 
-int match(string src, string dest, int bulls, int cows)
+int match(string dest)
 {
-    int b = 0;
-    int c = 0;
-    for (int i=0; i<n; i++){
-        if (src[i] == dest[i]) b += 1;
-        for (int j=0; j<n; j++){
-            if (src[i] == dest[j]) c += 1;
+    for (int p=0; p<all_tests.size(); p++) {
+        int b = 0;
+        int c = 0;
+        string src = all_tests[p];
+        for (int i=0; i<n; i++){
+            if (src[i] == dest[i]) b += 1;
+            for (int j=0; j<n; j++){
+                if (src[i] == dest[j]) c += 1;
+            }
         }
+        c -= b;
+        cerr << "Match: " << dest << " " << src << " " << all_bulls[p] - b << " " << all_cows[p] - c << endl;
+
+        if ((all_cows[p] != c) || (all_bulls[p] != b)) return 0;
     }
-    c -= b;
-    //cerr << "Match: " << src << " " << dest << " " << bulls - b << " " << cows - c << endl;
 
+    return 1;
+}
+string dig = "0123456789";
 
-    if ((cows == c) && (bulls == b)) return 1;
-    return 0;
+string next(string last){
+    do {
+        string ns = dig.substr(0, n);
+        if (dig.substr(0, 1) != "0" && ns!=last && match(ns) == 1){
+            return ns;
+        }
+    } while (next_permutation(dig.begin(), dig.end()));
+
 }
 
 int main()
@@ -38,53 +53,17 @@ int main()
     cin >> n; cin.ignore();
     cin >> bulls >> cows; cin.ignore();
 
-    string dig = "0123456789";
-    // dig = dig.substr(0, n);
-    string last = dig.substr(0, n);
-    // cases.push_back(last);
-
-
-    do {
-        if (dig.substr(0, n) != last and dig.substr(0, 1) != "0"){
-            last = dig.substr(0, n);
-            cases.push_back(last);
-            flags.push_back(1);
-            //cerr << "Item: " << last << endl;
-        }
-    } while (next_permutation(dig.begin(), dig.end()));
-    // cerr << "Dig: " << dig << endl;
-
-    // permutations(dig, n, "");
-    int prev = 0;
-
+    string cur = dig.substr(0, n);
 
     // game loop
     while (1) {
-        for (int i=prev; i<cases.size(); i++){
-            if (flags[i] == 1){
-                prev = i;
-                break;
-            }
-        }
-        // prev = cases[0];
-        cout << cases[prev] << endl; // number with numberLength count of digits
-        // cerr << "Size: " << cases.size() << endl;
+        cur=next(cur);
 
-
+        cout << cur << endl;
         cin >> bulls >> cows; cin.ignore();
 
-        for (int k=prev; k<cases.size(); k++){
-            //flags[k] *= match(prev, cases[k], bulls, cows);
-            if (match(cases[prev], cases[k], bulls, cows) == 0){
-                flags[k] = 0;
-                // cerr << "Removing: " << cases[k] << endl;
-
-                // cases.erase(cases.begin() + k);
-                // k-=1;
-            }
-        }
-
-
-
+        all_tests.push_back(cur);
+        all_cows.push_back(cows);
+        all_bulls.push_back(bulls);
     }
 }
