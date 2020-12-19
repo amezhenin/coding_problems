@@ -53,19 +53,6 @@ for i in range(10):
             res.append(f"{j} {i} D")
             continue
 
-        if u + r + d == ".#.":
-            res.append(f"{j} {i} D")
-            continue
-        if r + d + l == ".#.":
-            res.append(f"{j} {i} L")
-            continue
-        if d + l + u == ".#.":
-            res.append(f"{j} {i} U")
-            continue
-        if l + u + r == ".#.":
-            res.append(f"{j} {i} R")
-            continue
-
 
 
 print(" ".join(res))
