@@ -20,8 +20,9 @@ C=__import__("collections").Counter
 def encode(code):
     code += " " if len(code) % 2 else ""
     bcode = bytes(code, "ASCII")
-    res = bcode.decode("U16")
-    return len(res), res
+    enc = bcode.decode("U16")
+    res = f"exec(bytes('{enc}','U16')[2:])"
+    return len(repr(res))-2, res
 # print(encode(\"""<ascii code>\""")
 # usage
 # exec(bytes('<UTF-16 chars>','U16')[2:])
@@ -29,4 +30,4 @@ def encode(code):
 
 code=""""""
 print(len(code))
-print(encode(code))
+print("%s %s" % encode(code))
