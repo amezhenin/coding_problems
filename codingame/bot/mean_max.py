@@ -10,15 +10,24 @@ def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
 ARENA = 6000
-TOWN = 3000
+TOWN_RADIS = 3000
+SKILL_RANGE = 2000
+SKILL_RADIUS = 1000
+SKILL_COST = 60
 
+
+def dist(a, b, with_speed=True):
+    if with_speed:
+        LA.norm(a.pos + a.v - b.pos - b.v)
+
+    return LA.norm(a.pos - b.pos)
 
 class Wreck:
-    def __init__(self, unit_id, radius, x, y, vx, vy, extra):
+    def __init__(self, unit_id, radius, x, y, extra):
         self.id = unit_id
         self.r = radius
         self.pos = np.array([x, y])
-        self.v = np.array([vx, vy])
+        self.v = np.array([0, 0])  # need it to calculate distance with speed compensation
         self.e = extra  # water in the wreck
 
 
@@ -33,7 +42,7 @@ class Tanker:
         self.ee = extra_2  # max capacity of the tanker
 
 
-class Reaper:
+class Bot:
     def __init__(self, unit_id, mass, radius, x, y, vx, vy):
         self.id = unit_id
         self.m = mass
@@ -41,23 +50,9 @@ class Reaper:
         self.pos = np.array([x, y])
         self.v = np.array([vx, vy])
 
-
-class Destroyer:
-    def __init__(self, unit_id, mass, radius, x, y, vx, vy):
-        self.id = unit_id
-        self.m = mass
-        self.r = radius
-        self.pos = np.array([x, y])
-        self.v = np.array([vx, vy])
-
-
-class Doof:
-    def __init__(self, unit_id, mass, radius, x, y, vx, vy,):
-        self.id = unit_id
-        self.m = mass
-        self.r = radius
-        self.pos = np.array([x, y])
-        self.v = np.array([vx, vy])
+    @property
+    def speed(self):
+        return int(LA.norm(self.v))
 
 
 class Player:
@@ -146,8 +141,8 @@ class Game:
 
             if player == -1 and unit_type == 4:
                 # we parse wrecks
-                assert mass == -1 and extra_2 == -1
-                w = Wreck(unit_id, radius, x, y, vx, vy, extra)
+                assert mass == -1 and extra_2 == -1 and vx == 0 and vy == 0
+                w = Wreck(unit_id, radius, x, y, extra)
                 self.wrecks.append(w)
             elif player == -1 and unit_type == 3:
                 # we parse tanker
@@ -163,19 +158,23 @@ class Game:
                     plr = self.enemies[player-1]
                 if unit_type == 0:
                     # we parse Reaper
-                    reaper = Reaper(unit_id, mass, radius, x, y, vx, vy)
+                    reaper = Bot(unit_id, mass, radius, x, y, vx, vy)
                     plr.reaper = reaper
                 elif unit_type == 1:
                     # we parse Destroyer
-                    destroyer = Destroyer(unit_id, mass, radius, x, y, vx, vy)
+                    destroyer = Bot(unit_id, mass, radius, x, y, vx, vy)
                     plr.destroyer = destroyer
                 else:
                     # we parse Doof
-                    doof = Doof(unit_id, mass, radius, x, y, vx, vy)
+                    doof = Bot(unit_id, mass, radius, x, y, vx, vy)
                     plr.doof = doof
                     pass
                 pass
         pass
+
+
+    def can_cast_skill(self):
+        return self.me.rage >= SKILL_COST
 
 
     def move_reaper(self):
@@ -183,30 +182,36 @@ class Game:
 
         if len(self.wrecks) == 0:
             # we don't have wrecks, so we follow our destroyer
-            # TODO: destroyer can be moving
             d = self.me.destroyer
-            return f"{d.pos[0]} {d.pos[1]} 300 DESTR"
+            if dist(bot, d) < 2000:
+                return f"WAIT WAIT DESTR"
+            p = d.pos + d.v
+            return f"{p[0]} {p[1]} 300 DESTR"
 
         # we have some wrecks
         w = self.wrecks[0]
-        d = LA.norm(bot.pos - w.pos)
+        d = dist(bot, w, with_speed=False)
 
         for i in self.wrecks:
-            dd = LA.norm(bot.pos - i.pos)
+            dd = dist(bot, i, with_speed=False)
             if dd < d:
                 w = i
                 d = dd
 
-        throttle = 300
         if w.r > d:
-            # throttle = 0
+            # breaking mechanism
+            alt_d = dist(bot, w, with_speed=True)
+            log(f"D {d} ALT {alt_d}")
+            if w.r < alt_d:
+                p = bot.pos - bot.v
+                return f"{p[0]} {p[1]} 100 BREAKING V:{bot.speed}"
             log("Collecting water")
             return "WAIT WAIT"
-        elif d < 1000:
-            throttle = 100
-        elif d < 2000:
-            throttle = 200
-        return f"{w.pos[0]} {w.pos[1]} {throttle} {throttle} {int(d)}/{w.r}"
+
+        throttle = int(d - bot.speed)
+        throttle = min(max(throttle, 0), 300)
+        p = w.pos - bot.v
+        return f"{p[0]} {p[1]} {throttle} T:{throttle} V:{bot.speed}"
 
 
     def move_destroyer(self):
@@ -216,12 +221,11 @@ class Game:
         if len(tankers) == 0:
             return "WAIT WAIT"
 
-        # TODO: distance should take into account speed
         t = tankers[0]
-        d = LA.norm(bot.pos - t.pos)
+        d = dist(bot, t)
 
         for i in tankers:
-            dd = LA.norm(bot.pos - i.pos)
+            dd = dist(bot, i)
             if dd < d:
                 t = i
                 d = dd
@@ -238,7 +242,7 @@ class Game:
             t = self.doof_points[self.next_doof_point]
             d = LA.norm(bot.pos - t)
 
-        return f"{t[0]} {t[1]} 300 {int(d)}->{self.next_doof_point}"
+        return f"{t[0]} {t[1]} 300"
 
 
 
