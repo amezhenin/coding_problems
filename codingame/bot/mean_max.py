@@ -18,7 +18,7 @@ SKILL_COST = 60
 
 def dist(a, b, with_speed=True):
     if with_speed:
-        LA.norm(a.pos + a.v - b.pos - b.v)
+        return LA.norm(a.pos + a.v - b.pos - b.v)
 
     return LA.norm(a.pos - b.pos)
 
@@ -85,8 +85,15 @@ class Game:
         self.round += 1
         self.update_state()
 
+
         print(self.move_reaper())
-        print(self.move_destroyer())
+
+        skill = self.skill_destroyer()
+        if skill:
+            print(skill)
+        else:
+            print(self.move_destroyer())
+
         print(self.move_doof())
 
 
@@ -149,9 +156,9 @@ class Game:
                 assert extra > 0 and extra_2 > 0
                 t = Tanker(unit_id, mass, radius, x, y, vx, vy, extra, extra_2)
                 self.tankers.append(t)
-            else:
+            elif unit_type in (0, 1, 2):
                 # we parse player unit
-                assert player in (0, 1, 2) and unit_type in (0, 1, 2) and extra == -1 and extra_2 == -1
+                assert player in (0, 1, 2) and extra == -1 and extra_2 == -1
                 if player == 0:
                     plr = self.me
                 else:
@@ -168,7 +175,11 @@ class Game:
                     # we parse Doof
                     doof = Bot(unit_id, mass, radius, x, y, vx, vy)
                     plr.doof = doof
-                    pass
+            else:
+                # we are parsing TAR or OIL
+                assert unit_type in (5, 6)
+                log(inputs)
+                # TODO: store if we have oil or tar (relate to player?)
                 pass
         pass
 
@@ -180,7 +191,12 @@ class Game:
     def move_reaper(self):
         bot = self.me.reaper
 
-        if len(self.wrecks) == 0:
+        wrecks = []
+        for w in self.wrecks:
+            if dist(bot, w) < 2800:
+                wrecks.append(w)
+
+        if len(wrecks) == 0:
             # we don't have wrecks, so we follow our destroyer
             d = self.me.destroyer
             if dist(bot, d) < 2000:
@@ -188,27 +204,27 @@ class Game:
             p = d.pos + d.v
             return f"{p[0]} {p[1]} 300 DESTR"
 
-        # we have some wrecks
-        w = self.wrecks[0]
-        d = dist(bot, w, with_speed=False)
+        # we have some wrecks around us
+        w = max(wrecks, key=lambda x: x.e)
 
-        for i in self.wrecks:
-            dd = dist(bot, i, with_speed=False)
-            if dd < d:
-                w = i
-                d = dd
+        d = dist(bot, w, with_speed=False)
+        dv = dist(bot, w)
+
+        # for i in self.wrecks:
+        #     dd = dist(bot, i, with_speed=False)
+        #     if dd < d:
+        #         w = i
+        #         d = dd
 
         if w.r > d:
             # breaking mechanism
-            alt_d = dist(bot, w, with_speed=True)
-            log(f"D {d} ALT {alt_d}")
-            if w.r < alt_d:
+            log(f"D {int(d)} ALT {int(dv)}")
+            if w.r < dv:
                 p = bot.pos - bot.v
-                return f"{p[0]} {p[1]} 100 BREAKING V:{bot.speed}"
-            log("Collecting water")
+                return f"{p[0]} {p[1]} 300 BRK V:{bot.speed}"
             return "WAIT WAIT"
 
-        throttle = int(d - bot.speed)
+        throttle = int(dv)
         throttle = min(max(throttle, 0), 300)
         p = w.pos - bot.v
         return f"{p[0]} {p[1]} {throttle} T:{throttle} V:{bot.speed}"
@@ -217,19 +233,38 @@ class Game:
     def move_destroyer(self):
         bot = self.me.destroyer
 
-        tankers = self.tankers
+        tankers = []
+        for t in self.tankers:
+            if dist(bot, t) < 3000:
+                tankers.append(t)
+
+        if len(tankers) == 0:
+            tankers = self.tankers
+
         if len(tankers) == 0:
             return "WAIT WAIT"
 
-        t = tankers[0]
+        t = max(tankers, key=lambda x: x.e)
         d = dist(bot, t)
 
-        for i in tankers:
-            dd = dist(bot, i)
-            if dd < d:
-                t = i
-                d = dd
         return f"{t.pos[0]} {t.pos[1]} 300 {int(d)}"
+
+
+    def skill_destroyer(self):
+        if not self.can_cast_skill():
+            return None
+
+        bot = self.me.destroyer
+        rprs = [self.enemies[0].reaper, self.enemies[1].reaper]
+        wrecks = []
+        for w in self.wrecks:
+            if dist(bot, w) <= SKILL_RANGE:
+                wrecks.append(w)
+        log(f"Castable wrecks: {len(wrecks)}")
+        for w in wrecks:
+            if dist(w, rprs[0]) < w.r or dist(w, rprs[1]) < w.r:
+                return f"SKILL {w.pos[0]} {w.pos[1]} BOOM {w.pos[0]} {w.pos[1]}"
+        return None
 
 
     def move_doof(self):
@@ -237,10 +272,10 @@ class Game:
         t = self.doof_points[self.next_doof_point]
         d = LA.norm(bot.pos - t)
         if d < 2000:
-            log("Next CP")
+            # log("Next CP")
             self.next_doof_point = (self.next_doof_point + 1) % len(self.doof_points)
             t = self.doof_points[self.next_doof_point]
-            d = LA.norm(bot.pos - t)
+            # d = LA.norm(bot.pos - t)
 
         return f"{t[0]} {t[1]} 300"
 
