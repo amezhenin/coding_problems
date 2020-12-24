@@ -37,6 +37,8 @@ class Wreck:
         self.v = np.array([0, 0])  # need it to calculate distance with speed compensation
         self.e = extra  # water in the wreck
 
+    def __repr__(self):
+        return f"{self.pos[0]} {self.pos[1]} E:{self.e}"
 
 class Tanker:
 
@@ -213,7 +215,7 @@ class Game:
         for i in self.other_bots:
             if dist(wreck, i) < max(wreck.r, i.r):
                 cnt += 1
-        return cnt > 0
+        return cnt > 1
 
 
     def move_reaper(self):
@@ -221,7 +223,7 @@ class Game:
 
         wrecks = []
         for w in self.wrecks:
-            if dist(bot, w) < 2800 and not self.wreak_occupied(w):
+            if dist(bot, w) < 3500: #  and not self.wreak_occupied(w):
                 wrecks.append(w)
 
         if len(wrecks) == 0:
@@ -232,8 +234,21 @@ class Game:
             p = d.pos + d.v
             return f"{p[0]} {p[1]} 300 DESTR"
 
+        owerlap = []
+        for i in range(len(wrecks)):
+            for j in range(i+1, len(wrecks)):
+                ii = wrecks[i]
+                jj = wrecks[j]
+                if dist(ii, jj) < ii.r + jj.r:
+                    p = (ii.pos + jj.pos) / 2
+                    owerlap.append(Wreck(None, 0, int(p[0]), int(p[1]), 0))
+        log(f"Total owerlaps {len(owerlap)}")
+        for w in wrecks:
+            for o in owerlap:
+                if dist(w, o) < w.r:
+                    o.e += w.e
         # we have some wrecks around us
-        w = max(wrecks, key=lambda x: x.e)
+        w = max(owerlap + wrecks, key=lambda x: x.e)
 
         d = dist(bot, w, with_speed=False)
         dv = dist(bot, w)
