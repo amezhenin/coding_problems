@@ -16,6 +16,13 @@ SKILL_RANGE = 2000
 SKILL_RADIUS = 1000
 SKILL_COST = 60
 
+SKILL_REAPER = 1
+SKILL_DESTR = 0
+SKILL_DOOF = 0
+
+MANY_WRECKS = 7
+
+
 
 def dist(a, b, with_speed=True):
     if with_speed:
@@ -75,15 +82,7 @@ class Game:
         self.tankers = []
         self.tars = []
         self.oils = []
-
-        s = np.sqrt(2)
-        DR = 4500
-        points = [[DR, 0], [DR//s, -DR//s],
-                  [0, -DR], [-DR//s, -DR//s],
-                  [-DR, 0], [-DR//s, DR//s],
-                  [0, DR], [DR//s, DR//s]]
-        self.doof_points = list(map(lambda x: np.array([int(x[0]), int(x[1])]), points))
-        self.next_doof_point = 0
+        self.other_bots = []
 
 
     def next_round(self):
@@ -107,6 +106,8 @@ class Game:
         self.tankers = []
         self.tars = []
         self.oils = []
+        self.other_bots = []
+
 
         self.me.score = int(input())
         self.enemies[0].score = int(input())
@@ -195,7 +196,9 @@ class Game:
             else:
                 log(inputs)
                 assert False
-        pass
+
+        en1, en2 = self.enemies
+        self.other_bots = self.tankers + [en1.reaper, en1.destroyer, en1.doof, en2.reaper, en2.destroyer, en2.doof]
 
 
     def can_cast_skill(self):
@@ -207,19 +210,21 @@ class Game:
 
         wrecks = []
         for w in self.wrecks:
-            if dist(bot, w) < 2800:
+            if not self.wreak_occupied(w):
                 wrecks.append(w)
 
         if len(wrecks) == 0:
             # we don't have wrecks, so we follow our destroyer
             d = self.me.destroyer
-            if dist(bot, d) < 2000:
+            if dist(bot, d) < 1500:
                 return f"WAIT WAIT DESTR"
             p = d.pos + d.v
             return f"{p[0]} {p[1]} 300 DESTR"
 
         # we have some wrecks around us
+        # w = min(wrecks, key=lambda x: dist(bot, x))
         w = max(wrecks, key=lambda x: x.e)
+
 
         d = dist(bot, w, with_speed=False)
         dv = dist(bot, w)
@@ -239,7 +244,7 @@ class Game:
 
 
     def skill_reaper(self):
-        if not self.can_cast_skill():
+        if not self.can_cast_skill() or SKILL_REAPER == 0:
             return None
 
         bot = self.me.reaper
@@ -261,6 +266,9 @@ class Game:
 
 
     def move_destroyer(self):
+        if len(self.wrecks) >= MANY_WRECKS:
+            return self.attack_reaper()
+
         bot = self.me.destroyer
 
         tankers = []
@@ -272,7 +280,8 @@ class Game:
             tankers = self.tankers
 
         if len(tankers) == 0:
-            return "WAIT WAIT"
+            return self.attack_reaper()
+
 
         t = max(tankers, key=lambda x: x.e)
         d = dist(bot, t)
@@ -281,7 +290,7 @@ class Game:
 
 
     def skill_destroyer(self):
-        if not self.can_cast_skill():
+        if not self.can_cast_skill() or SKILL_DESTR == 0:
             return None
 
         bot = self.me.destroyer
@@ -298,20 +307,11 @@ class Game:
 
 
     def move_doof(self):
-        bot = self.me.doof
-        t = self.doof_points[self.next_doof_point]
-        d = LA.norm(bot.pos - t)
-        if d < 2000:
-            # log("Next CP")
-            self.next_doof_point = (self.next_doof_point + 1) % len(self.doof_points)
-            t = self.doof_points[self.next_doof_point]
-            # d = LA.norm(bot.pos - t)
-
-        return f"{t[0]} {t[1]} 300"
+        return self.attack_reaper()
 
 
     def skill_doof(self):
-        if not self.can_cast_skill():
+        if not self.can_cast_skill() or SKILL_DOOF == 0:
             return None
 
         bot = self.me.doof
@@ -325,6 +325,21 @@ class Game:
             if dist(w, rprs[0]) < w.r or dist(w, rprs[1]) < w.r:
                 return f"SKILL {w.pos[0]} {w.pos[1]} OIL {w.pos[0]} {w.pos[1]}"
         return None
+
+
+    def attack_reaper(self):
+        en = max(self.enemies, key=lambda x: x.score)
+        bot = en.reaper
+        pos = bot.pos + bot.v
+
+        return f"{pos[0]} {pos[1]} 300 ATK"
+
+
+    def wreak_occupied(self, wreck):
+        for i in self.other_bots:
+            if dist(wreck, i) < max(wreck.r, i.r):
+                return True
+        return False
 
 
 if __name__ == "__main__":
