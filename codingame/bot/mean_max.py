@@ -17,8 +17,8 @@ SKILL_RADIUS = 1000
 SKILL_COST = 60
 
 SKILL_REAPER = 1
-SKILL_DESTR = 0
-SKILL_DOOF = 0
+SKILL_DESTR = 1
+SKILL_DOOF = 1
 
 MANY_WRECKS = 7
 
@@ -49,15 +49,36 @@ class Tanker:
         self.v = np.array([vx, vy])
         self.e = extra  # water in the tanker
         self.ee = extra_2  # max capacity of the tanker
+        self.unit_type = "tanker"
 
 
-class Bot:
-    def __init__(self, unit_id, mass, radius, x, y, vx, vy):
+class Reaper:
+    def __init__(self, unit_id, mass, radius, x, y, vx, vy, old=None):
         self.id = unit_id
         self.m = mass
         self.r = radius
         self.pos = np.array([x, y])
         self.v = np.array([vx, vy])
+        self.unit_type = "reaper"
+        # self.old = old
+        self.target_id = None
+        if old:
+            self.target_id = old.target_id
+
+
+    @property
+    def speed(self):
+        return int(LA.norm(self.v))
+
+
+class Bot:
+    def __init__(self, unit_id, mass, radius, x, y, vx, vy, unit_type):
+        self.id = unit_id
+        self.m = mass
+        self.r = radius
+        self.pos = np.array([x, y])
+        self.v = np.array([vx, vy])
+        self.unit_type = unit_type
 
     @property
     def speed(self):
@@ -90,7 +111,7 @@ class Game:
         self.update_state()
 
         for sf, mf in [(self.skill_reaper, self.move_reaper),
-                       (self.skill_destroyer, self.move_destroyer),
+                       (self.skill_destroyer_alt, self.move_destroyer),
                        (self.skill_doof, self.move_doof)]:
             skill = sf()
             if skill:
@@ -175,23 +196,23 @@ class Game:
                     plr = self.enemies[player-1]
                 if unit_type == 0:
                     # we parse Reaper
-                    reaper = Bot(unit_id, mass, radius, x, y, vx, vy)
+                    reaper = Reaper(unit_id, mass, radius, x, y, vx, vy, plr.reaper)
                     plr.reaper = reaper
                 elif unit_type == 1:
                     # we parse Destroyer
-                    destroyer = Bot(unit_id, mass, radius, x, y, vx, vy)
+                    destroyer = Bot(unit_id, mass, radius, x, y, vx, vy, "destroyer")
                     plr.destroyer = destroyer
                 else:
                     # we parse Doof
-                    doof = Bot(unit_id, mass, radius, x, y, vx, vy)
+                    doof = Bot(unit_id, mass, radius, x, y, vx, vy, "doof")
                     plr.doof = doof
             elif unit_type == 5:
                 # we are parsing TAR, treat it as a bot for now for simplicity
-                self.tars.append(Bot(unit_id, mass, radius, x, y, vx, vy))
+                self.tars.append(Bot(unit_id, mass, radius, x, y, vx, vy, ""))
 
             elif unit_type == 6:
                 # we are parsing OIL, treat it as a bot for now for simplicity
-                self.oils.append(Bot(unit_id, mass, radius, x, y, vx, vy))
+                self.oils.append(Bot(unit_id, mass, radius, x, y, vx, vy, ""))
 
             else:
                 log(inputs)
@@ -205,13 +226,31 @@ class Game:
         return self.me.rage >= SKILL_COST
 
 
+    def wreak_occupied(self, wreck):
+        cnt = 0
+        for i in self.other_bots:
+            if dist(wreck, i) < max(wreck.r, i.r):
+                cnt += 1 + (i.unit_type == "reaper")
+        return cnt > 1
+
+
     def move_reaper(self):
         bot = self.me.reaper
-
         wrecks = []
-        for w in self.wrecks:
-            if not self.wreak_occupied(w):
-                wrecks.append(w)
+
+        # chasing old wreck, disabled for now
+        # if bot.target_id:
+        #     wrecks = list(filter(lambda x: x.id == bot.target_id, self.wrecks))
+        #     log(f"Target {bot.target_id}  Found {len(wrecks)}")
+
+        # looking for a new one
+        if len(wrecks) == 0:
+            # old target is gone
+            bot.target_id = None
+
+            for w in self.wrecks:
+                if not self.wreak_occupied(w):
+                    wrecks.append(w)
 
         if len(wrecks) == 0:
             # we don't have wrecks, so we follow our destroyer
@@ -222,22 +261,20 @@ class Game:
             return f"{p[0]} {p[1]} 300 DESTR"
 
         # we have some wrecks around us
-        # w = min(wrecks, key=lambda x: dist(bot, x))
-        w = max(wrecks, key=lambda x: x.e)
+        w = min(wrecks, key=lambda x: dist(bot, x))
+        # w = max(wrecks, key=lambda x: x.e)
 
+        # updating target wreck
+        bot.target_id = w.id
 
-        d = dist(bot, w, with_speed=False)
-        dv = dist(bot, w)
-
-        if w.r > d:
+        if w.r > dist(bot, w, with_speed=False):
             # breaking mechanism
-            log(f"D {int(d)} ALT {int(dv)}")
-            if w.r < dv:
-                p = bot.pos - bot.v
-                return f"{p[0]} {p[1]} 300 BRK V:{bot.speed}"
-            return "WAIT WAIT"
+            p = bot.pos - bot.v
+            throttle = min(max(bot.speed, 0), 300)
+            return f"{p[0]} {p[1]} {throttle} BRK V:{bot.speed}"
+            # return "WAIT WAIT"
 
-        throttle = int(dv)
+        throttle = int(dist(bot, w))
         throttle = min(max(throttle, 0), 300)
         p = w.pos - bot.v
         return f"{p[0]} {p[1]} {throttle} T:{throttle} V:{bot.speed}"
@@ -267,7 +304,8 @@ class Game:
 
     def move_destroyer(self):
         if len(self.wrecks) >= MANY_WRECKS:
-            return self.attack_reaper()
+            r = self.me.reaper
+            return f"{r.pos[0]} {r.pos[1]} 300"
 
         bot = self.me.destroyer
 
@@ -282,11 +320,12 @@ class Game:
         if len(tankers) == 0:
             return self.attack_reaper()
 
+        # t = max(tankers, key=lambda x: x.e)
+        t = min(tankers, key=lambda x: dist(bot, x))
+        pos = t.pos + t.v
+        # d = dist(bot, t)
 
-        t = max(tankers, key=lambda x: x.e)
-        d = dist(bot, t)
-
-        return f"{t.pos[0]} {t.pos[1]} 300 {int(d)}"
+        return f"{pos[0]} {pos[1]} 300"
 
 
     def skill_destroyer(self):
@@ -305,6 +344,19 @@ class Game:
                 return f"SKILL {w.pos[0]} {w.pos[1]} BOOM {w.pos[0]} {w.pos[1]}"
         return None
 
+
+    def skill_destroyer_alt(self):
+        if not self.can_cast_skill() or SKILL_DESTR == 0:
+            return None
+
+        destr = self.me.destroyer
+        reaper = self.me.reaper
+        if dist(destr, reaper) < SKILL_RANGE:
+            for i in self.other_bots:
+                if dist(reaper, i) < SKILL_RADIUS:
+                    pos = reaper.pos + reaper.v
+                    return f"SKILL {pos[0]} {pos[1]} BOOM {pos[0]} {pos[1]}"
+        return None
 
     def move_doof(self):
         return self.attack_reaper()
@@ -334,12 +386,6 @@ class Game:
 
         return f"{pos[0]} {pos[1]} 300 ATK"
 
-
-    def wreak_occupied(self, wreck):
-        for i in self.other_bots:
-            if dist(wreck, i) < max(wreck.r, i.r):
-                return True
-        return False
 
 
 if __name__ == "__main__":
