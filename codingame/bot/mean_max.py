@@ -223,16 +223,16 @@ class Game:
 
         wrecks = []
         for w in self.wrecks:
-            if dist(bot, w) < 3500: #  and not self.wreak_occupied(w):
+            if dist(bot, w) < 4500: #  and not self.wreak_occupied(w):
                 wrecks.append(w)
 
         if len(wrecks) == 0:
             # we don't have wrecks, so we follow our destroyer
-            d = self.me.destroyer
-            if dist(bot, d) < 2000:
-                return f"WAIT WAIT DESTR"
-            p = d.pos + d.v
-            return f"{p[0]} {p[1]} 300 DESTR"
+            # d = self.me.destroyer
+            # if dist(bot, d) < 2000:
+            #     return f"WAIT WAIT DESTR"
+            # p = d.pos + d.v
+            return f"0 0 300 ZERO"
 
         owerlap = []
         for i in range(len(wrecks)):
@@ -248,7 +248,9 @@ class Game:
                 if dist(w, o) < w.r:
                     o.e += w.e
         # we have some wrecks around us
-        w = max(owerlap + wrecks, key=lambda x: x.e)
+        # w = max(owerlap + wrecks, key=lambda x: x.e)
+        w = max(owerlap + wrecks, key=lambda x: (dist(x, bot) < 1000, x.e))
+
 
         d = dist(bot, w, with_speed=False)
         dv = dist(bot, w)
@@ -290,8 +292,8 @@ class Game:
 
 
     def move_destroyer(self):
-        if len(self.wrecks) > 7:
-            return self.attack_reaper()
+        if len(self.wrecks) > 5:
+            return self.follow_reaper()
 
         bot = self.me.destroyer
 
@@ -356,6 +358,13 @@ class Game:
         pos = bot.pos + bot.v
 
         return f"{pos[0]} {pos[1]} 300 ATK"
+
+
+    def follow_reaper(self):
+        bot = self.me.reaper
+        pos = bot.pos + bot.v
+
+        return f"{pos[0]} {pos[1]} 300 FLW"
 
 
 if __name__ == "__main__":
