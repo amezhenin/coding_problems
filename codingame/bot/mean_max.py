@@ -17,7 +17,7 @@ SKILL_RADIUS = 1000
 SKILL_COST = 60
 
 SKILL_REAPER = 1
-SKILL_DESTR = 0
+SKILL_DESTR = 1
 SKILL_DOOF = 1
 
 
@@ -223,7 +223,7 @@ class Game:
 
         wrecks = []
         for w in self.wrecks:
-            if dist(bot, w) < 4500: #  and not self.wreak_occupied(w):
+            if dist(bot, w) < 5000: #  and not self.wreak_occupied(w):
                 wrecks.append(w)
 
         if len(wrecks) == 0:
@@ -293,7 +293,7 @@ class Game:
 
     def move_destroyer(self):
         if len(self.wrecks) > 5:
-            return self.follow_reaper()
+            return self.attack_reaper()
 
         bot = self.me.destroyer
 
@@ -319,10 +319,15 @@ class Game:
             return None
 
         bot = self.me.destroyer
+        mr = self.me.reaper
         rprs = [self.enemies[0].reaper, self.enemies[1].reaper]
         wrecks = []
+
+        oils = set()
+        for i in self.oils:
+            oils.add((i.pos[0], i.pos[1]))
         for w in self.wrecks:
-            if dist(bot, w) <= SKILL_RANGE:
+            if dist(bot, w) <= SKILL_RANGE and dist(mr, w) > 2000 and (w.pos[0], w.pos[1]) not in oils:
                 wrecks.append(w)
         log(f"Destr castable wrecks: {len(wrecks)}")
         for w in wrecks:
@@ -341,9 +346,14 @@ class Game:
 
         bot = self.me.doof
         rprs = [self.enemies[0].reaper, self.enemies[1].reaper]
+        mr = self.me.reaper
         wrecks = []
+
+        oils = set()
+        for i in self.oils:
+            oils.add((i.pos[0], i.pos[1]))
         for w in self.wrecks:
-            if dist(bot, w) <= SKILL_RANGE:
+            if dist(bot, w) <= SKILL_RANGE and dist(mr, w) > SKILL_RADIUS and (w.pos[0], w.pos[1]) not in oils:
                 wrecks.append(w)
         log(f"Doof castable wrecks: {len(wrecks)}")
         for w in wrecks:
