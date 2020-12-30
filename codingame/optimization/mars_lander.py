@@ -27,11 +27,19 @@ while True:
     # R P. R is the desired rotation angle. P is the desired thrust power.
     print("-20 3")
 
-"""
 
-import sys
+vertical speed must be limited ( ≤ 40m/s in absolute value)
+horizontal speed must be limited ( ≤ 20m/s in absolute value)
+"""
 import math
 
+import sys
+def log(msg):
+    print(msg, file=sys.stderr, flush=True)
+
+
+MAX_VS = 40
+MAX_HS = 20
 
 # drawing surface and getting target plane
 target_x1, target_x2, target_y = 0, 0, 0
@@ -80,7 +88,7 @@ while True:
         ) * (math.sin(2 * theta))
 
         distance = (int(distance) / 10) * -1
-        # print(f"projected landing distance {distance}", file=sys.stderr)
+        log(f"LD {distance}")
 
     angle = 0
     thrust = 4
@@ -101,7 +109,10 @@ while True:
 
     elif stage == 2:
         angle = 0
-        if counter % 20 == 0:
+
+        slow_rate = 13 if y0 > 400 else 20
+        log(f"Y0 {y0} Slow {slow_rate}")
+        if counter % slow_rate == 0:
             thrust = 3
         else:
             thrust = 4
@@ -116,13 +127,11 @@ while True:
 
     elif stage == 3:  # SLOW DOWN
         thrust = 4
+        max_ang = 70
 
         opp_aoa = int((math.degrees(aoa) - 90) % 360 - 180)
+        opp_aoa = max(-max_ang, min(max_ang, opp_aoa))
 
-        if opp_aoa >= 70:
-            opp_aoa = 70
-        if opp_aoa <= -70:
-            opp_aoa = -70
 
         if abs(h_speed) > 1:
             if h_speed > 1:
@@ -134,7 +143,7 @@ while True:
             stage = 4
 
     elif stage == 4:  # LANDING
-        if v_speed < -30:
+        if v_speed < -MAX_VS + 1:
             thrust = 4
         else:
             thrust = 3

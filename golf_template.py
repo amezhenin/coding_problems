@@ -1,6 +1,9 @@
 """
-I,N=input,int
+I=input  # I,N=input,int
 for i in" "*N(I()):print(f"{N(I()):b}")
+
+# input can print
+I("Hello World")
 
 # acts like " ".join(array), but can have logic inside
 f=0
