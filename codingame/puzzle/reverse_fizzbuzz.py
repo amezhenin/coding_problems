@@ -5,6 +5,13 @@ https://www.codingame.com/ide/puzzle/reverse-fizzbuzz
 import sys
 import math
 
+"""
+# for future use
+def gcd(x, y):
+    while y:
+        x, y = y, x % y
+    return x
+"""
 
 # Auto-generated code below aims at helping you parse
 # the standard input according to the problem statement.
