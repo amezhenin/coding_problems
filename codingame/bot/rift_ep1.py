@@ -9,6 +9,32 @@ def log(msg):
 POD_COST = 20
 
 
+class Continent:
+    def __init__(self, cid, my_id):
+        self.id = cid
+        self.my_id = my_id
+        self.pt = 0
+        self.zones = {}
+
+    def add(self, zone):
+        assert zone.id not in self.zones
+        self.zones[zone.id] = zone
+        self.pt += zone.pt
+        zone.continent = self
+
+    @property
+    def owned_pt(self):
+        res = 0
+        for z in self.zones.values():
+            if z.owned:
+                res += z.pt
+        return res
+
+
+    def __repr__(self):
+        return f"C{self.id} S {self.pt} zones: {self.zones.keys()}"
+
+
 class Zone:
     def __init__(self, zid, pt, my_id):
         self.id = zid
@@ -20,6 +46,7 @@ class Zone:
         self.pods = None
         self.move = None
         self.links = []
+        self.continent = None
 
     def update_pods(self, owner_id, p0, p1, p2, p3):
         self.owner_id = owner_id
@@ -34,6 +61,8 @@ class Zone:
 class Game:
 
     def __init__(self):
+        self.round = 0
+
         # player_count: the amount of players (2 to 4)
         # my_id: my player ID (0, 1, 2 or 3)
         # zone_count: the amount of zones on the map
@@ -43,6 +72,7 @@ class Game:
         self.my_id = my_id
         self.zone_count = zone_count
         self.zones = {}
+        self.continents = []
 
         for i in range(zone_count):
             # zone_id: this zone's ID (between 0 and zoneCount-1)
@@ -56,8 +86,34 @@ class Game:
             self.zones[z2].links.append(self.zones[z1])
         pass
 
+        self.build_continents()
+        for i in self.continents:
+            log(i)
+
+
+    def build_continents(self):
+
+        def dfs(z, c):
+            if not z.continent:
+                c.add(z)
+                for l in z.links:
+                    dfs(l, c)
+
+        # build continents
+        zs = list(self.zones.values())
+        cid = 0
+        while len(zs) > 0:
+            z = zs[0]
+            cont = Continent(cid, self.my_id)
+            self.continents.append(cont)
+            cid += 1
+            dfs(z, cont)
+            zs = list(filter(lambda x: x.continent is None, zs))
+
 
     def next_round(self):
+        self.round += 1
+
         platinum = int(input())  # my available Platinum
         for i in range(self.zone_count):
             zid, owner_id, pods_p0, pods_p1, pods_p2, pods_p3 = map(int, input().split())
@@ -78,23 +134,23 @@ class Game:
             print("WAIT")
 
         # buy
-        zs = [(z.pt, z.id) for z in self.zones.values()]
+        cont = self.choose_continent()
+        zs = [(z.pt, z.id, z) for z in cont.zones.values()]
         zs.sort(reverse=True)
         buy = []
-        for _, i in zs:
-            if self.zones[i].owner_id == -1:
-                buy.append(f"1 {i}")
-        log(f"Free zones {len(buy)}")
-        for i in range(self.zone_count):
+        for _, _, z in zs:
+            if z.owner_id == -1 and z.pt > 0:
+                buy.append(f"1 {z.id}")
+        # log(f"Free zones {len(buy)}")
+        for z in cont.values():
             score = 0
-            z = self.zones[i]
             for l in z.links:
                 score += (not l.owned)
 
             if z.owned and score > 0:
                 buy.append(f"1 {i}")
 
-        log(f"Can buy {platinum//POD_COST} out of {len(buy)} options")
+        # log(f"Can buy {platinum//POD_COST} out of {len(buy)} options")
         buy = buy[:platinum//POD_COST]
         print(" ".join(buy))
 
@@ -110,13 +166,22 @@ class Game:
                     l.move = z
                     q.append(l)
                     break
-        log(f"Starting queue: {len(q)}")
+        # log(f"Starting queue: {len(q)}")
         while len(q) > 0:
             target = q.popleft()
             for z in target.links:
                 if not z.move:
                     z.move = target
                     q.append(z)
+
+
+    def choose_continent(self):
+        for c in self.continents:
+            log(f"C {c.id} unowned pt: {c.pt - c.owned_pt}")
+        res = max(self.continents, key=lambda c: c.pt - c.owned_pt)
+        log(f"Best continent: {res}")
+        return res
+
 
 
 if __name__ == "__main__":
