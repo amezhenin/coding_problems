@@ -1,4 +1,3 @@
-from collections import defaultdict
 import sys
 
 
@@ -7,6 +6,27 @@ def log(msg):
 
 
 POD_COST = 20
+
+
+class Zone:
+    def __init__(self, zid, pt, my_id):
+        self.id = zid
+        self.pt = pt
+        self.my_id = my_id
+        self.owner_id = None
+        self.owned = None
+        self.pods = None
+        self.move = None
+        self.links = []
+
+    def update_pods(self, owner_id, p0, p1, p2, p3):
+        self.owner_id = owner_id
+        self.owned = self.my_id == owner_id
+        self.pods = [p0, p1, p2, p3]
+        self.my_pods = self.pods[self.my_id]
+        # high priority move from this position
+        self.move = None
+
 
 
 class Game:
@@ -20,25 +40,23 @@ class Game:
 
         self.my_id = my_id
         self.zone_count = zone_count
-        self.zone_pt = {}
-        self.links = defaultdict(list)
+        self.zones = {}
 
         for i in range(zone_count):
             # zone_id: this zone's ID (between 0 and zoneCount-1)
             # platinum_source: the amount of Platinum this zone can provide per game turn
             zid, pt = map(int, input().split())
-            self.zone_pt[zid] = pt
+            self.zones[zid] = Zone(zid, pt, my_id)
 
         for i in range(link_count):
             z1, z2 = map(int, input().split())
-            self.links[z1].append(z2)
-            self.links[z2].append(z1)
+            self.zones[z1].links.append(self.zones[z2])
+            self.zones[z2].links.append(self.zones[z1])
         pass
 
 
     def next_round(self):
         platinum = int(input())  # my available Platinum
-        zones = {}
         for i in range(self.zone_count):
             # z_id: this zone's ID
             # owner_id: the player who owns this zone (-1 otherwise)
@@ -46,36 +64,40 @@ class Game:
             # pods_p1: player 1's PODs on this zone
             # pods_p2: player 2's PODs on this zone (always 0 for a two player game)
             # pods_p3: player 3's PODs on this zone (always 0 for a two or three player game)
-            z_id, owner_id, pods_p0, pods_p1, pods_p2, pods_p3 = [int(j) for j in input().split()]
-            zones[z_id] = owner_id
+            zid, owner_id, pods_p0, pods_p1, pods_p2, pods_p3 = map(int, input().split())
+            self.zones[zid].update_pods(owner_id, pods_p0, pods_p1, pods_p2, pods_p3)
+
+        # FIXME
+        self.update_move_map()
 
         # first line for movement commands, second line for POD purchase (see the protocol in the statement for details)
         # move
         move = []
         for i in range(self.zone_count):
-            for l in self.links[i]:
-                if zones[l] != self.my_id:
-                    move.append(f"1 {i} {l}")
+            z = self.zones[i]
+            if z.move:
+                move.append(f"{z.my_pods} {i} {z.move.id}")
+            pass
         if len(move):
             print(" ".join(move))
         else:
             print("WAIT")
 
-
         # buy
-        zs = [(v, k) for k, v in self.zone_pt.items()]
+        zs = [(z.pt, z.id) for z in self.zones.values()]
         zs.sort(reverse=True)
         buy = []
         for _, i in zs:
-            if zones[i] == -1:
+            if self.zones[i].owner_id == -1:
                 buy.append(f"1 {i}")
         log(f"Free zones {len(buy)}")
         for i in range(self.zone_count):
             score = 0
-            for l in self.links[i]:
-                if zones[l] != self.my_id:
-                    score += 1
-            if zones[i] == self.my_id and score > 0:
+            z = self.zones[i]
+            for l in z.links:
+                score += (not l.owned)
+
+            if z.owned and score > 0:
                 buy.append(f"1 {i}")
         # for i in range(self.zone_count):
         #     if zones[i] != self.my_id:
@@ -87,6 +109,20 @@ class Game:
         buy = buy[:platinum//POD_COST]
         print(" ".join(buy))
 
+
+    def update_move_map(self):
+        # old code
+        for i in range(self.zone_count):
+            z = self.zones[i]
+            z.move = self.find_move(z)
+        pass
+
+    def find_move(self, zone):
+        if zone.owned and zone.my_pods > 0:
+            for l in zone.links:
+                if not l.owned:
+                    return l
+        return None
 
 
 if __name__ == "__main__":
