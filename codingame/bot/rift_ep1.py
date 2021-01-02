@@ -30,6 +30,22 @@ class Continent:
                 res += z.pt
         return res
 
+    @property
+    def free_zones(self):
+        res = 0
+        for z in self.zones.values():
+            if z.owner_id == -1:
+                res += 1
+        return res
+
+    @property
+    def owned_zones(self):
+        res = 0
+        for z in self.zones.values():
+            if z.owned:
+                res += 1
+        return res
+
 
     def __repr__(self):
         return f"C{self.id} S {self.pt} zones: {self.zones.keys()}"
@@ -126,7 +142,8 @@ class Game:
         for i in range(self.zone_count):
             z = self.zones[i]
             if z.move:
-                move.append(f"{z.my_pods} {i} {z.move.id}")
+                cnt = z.my_pods - 1 if z.my_pods > 1 else 1
+                move.append(f"{cnt} {i} {z.move.id}")
             pass
         if len(move):
             print(" ".join(move))
@@ -135,24 +152,37 @@ class Game:
 
         # buy
         cont = self.choose_continent()
+
         zs = [(z.pt, z.id, z) for z in cont.zones.values()]
         zs.sort(reverse=True)
         buy = []
         for _, _, z in zs:
             if z.owner_id == -1 and z.pt > 0:
-                buy.append(f"1 {z.id}")
+                buy.append(z.id)
         # log(f"Free zones {len(buy)}")
-        for z in cont.values():
-            score = 0
-            for l in z.links:
-                score += (not l.owned)
+        for z in cont.zones.values():
+            if z.owner_id == -1 or z.owned:
+                score = 0
+                for l in z.links:
+                    score += (not l.owned)
+                if score > 0:
+                    buy.append(z.id)
 
-            if z.owned and score > 0:
-                buy.append(f"1 {i}")
+        for z in cont.zones.values():
+            if z.owner_id == -1:
+                buy.append(z.id)
 
         # log(f"Can buy {platinum//POD_COST} out of {len(buy)} options")
-        buy = buy[:platinum//POD_COST]
-        print(" ".join(buy))
+        amount = 1
+        if platinum//POD_COST > len(buy) and len(buy):
+            log("Custom buy")
+            amount = platinum // (POD_COST * len(buy))
+        else:
+            buy = buy[:platinum//POD_COST]
+        res = []
+        for i in buy:
+            res.append(f"{amount} {i}")
+        print(" ".join(res))
 
 
     def update_move_map(self):
@@ -176,9 +206,10 @@ class Game:
 
 
     def choose_continent(self):
-        for c in self.continents:
-            log(f"C {c.id} unowned pt: {c.pt - c.owned_pt}")
-        res = max(self.continents, key=lambda c: c.pt - c.owned_pt)
+        cs = list(filter(lambda x: x.free_zones > 0 or x.owned_zones > 0, self.continents))
+        for c in cs:
+            log(f"C {c.id} Upt: {c.pt - c.owned_pt} FZ:{c.free_zones} OZ:{c.owned_zones}")
+        res = max(cs, key=lambda c: c.pt - c.owned_pt)
         log(f"Best continent: {res}")
         return res
 
