@@ -1,3 +1,4 @@
+from collections import deque
 import sys
 
 
@@ -13,6 +14,7 @@ class Zone:
         self.id = zid
         self.pt = pt
         self.my_id = my_id
+        self.my_pods = None
         self.owner_id = None
         self.owned = None
         self.pods = None
@@ -58,19 +60,11 @@ class Game:
     def next_round(self):
         platinum = int(input())  # my available Platinum
         for i in range(self.zone_count):
-            # z_id: this zone's ID
-            # owner_id: the player who owns this zone (-1 otherwise)
-            # pods_p0: player 0's PODs on this zone
-            # pods_p1: player 1's PODs on this zone
-            # pods_p2: player 2's PODs on this zone (always 0 for a two player game)
-            # pods_p3: player 3's PODs on this zone (always 0 for a two or three player game)
             zid, owner_id, pods_p0, pods_p1, pods_p2, pods_p3 = map(int, input().split())
             self.zones[zid].update_pods(owner_id, pods_p0, pods_p1, pods_p2, pods_p3)
 
-        # FIXME
         self.update_move_map()
 
-        # first line for movement commands, second line for POD purchase (see the protocol in the statement for details)
         # move
         move = []
         for i in range(self.zone_count):
@@ -99,11 +93,6 @@ class Game:
 
             if z.owned and score > 0:
                 buy.append(f"1 {i}")
-        # for i in range(self.zone_count):
-        #     if zones[i] != self.my_id:
-        #         buy.append(f"2 {i}")
-        # log(f"+ with enemy zones {len(buy)}")
-
 
         log(f"Can buy {platinum//POD_COST} out of {len(buy)} options")
         buy = buy[:platinum//POD_COST]
@@ -111,18 +100,23 @@ class Game:
 
 
     def update_move_map(self):
-        # old code
-        for i in range(self.zone_count):
-            z = self.zones[i]
-            z.move = self.find_move(z)
-        pass
-
-    def find_move(self, zone):
-        if zone.owned and zone.my_pods > 0:
-            for l in zone.links:
-                if not l.owned:
-                    return l
-        return None
+        q = deque()
+        for z in self.zones.values():
+            if z.owned:
+                continue
+            # z NOT owned
+            for l in z.links:
+                if l.owned:
+                    l.move = z
+                    q.append(l)
+                    break
+        log(f"Starting queue: {len(q)}")
+        while len(q) > 0:
+            target = q.popleft()
+            for z in target.links:
+                if not z.move:
+                    z.move = target
+                    q.append(z)
 
 
 if __name__ == "__main__":
