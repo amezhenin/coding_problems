@@ -34,7 +34,7 @@ class Zone:
         self.visible = visible
         # FIXME: enemy base is always visible with pods, can it be used to analyze enemy income?
         if self.visible:
-            log(f"Z {self.id} pt: {platinum}")
+            # log(f"Z {self.id} pt: {platinum}")
             self.pt = platinum
 
 
