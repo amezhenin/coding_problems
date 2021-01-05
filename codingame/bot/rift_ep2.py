@@ -8,6 +8,7 @@ def log(msg):
 
 POD_COST = 20
 EXPLORE_ROUNDS = 5
+BLITZ = 8
 
 class Zone:
 
@@ -125,8 +126,7 @@ class Game:
 
             blitz = self.count_attack_steps()
             log(f"Attack distance: {blitz}")
-            if blitz <= 8:
-                self.blitz_attack = True
+            self.blitz = blitz
 
         # move
         all_moves = []
@@ -142,6 +142,10 @@ class Game:
             for l in z.links:
                 if l not in move and l.owner_id not in (-1, self.my_id):
                     move.append(l)
+
+            # ignore explore moves if we are in blitz mode
+            if BLITZ and self.blitz <= BLITZ:
+                move = []
             move.append(z.attack)
             base_pods = z.pods // len(move)
             excess = z.pods % len(move)
