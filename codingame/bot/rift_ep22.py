@@ -127,35 +127,30 @@ class Game:
                 self.blitz_attack = True
 
         # move
-        move = []
+        all_moves = []
         for z in self.zones.values():
             if z.pods == 0:
                 continue
-
-            pods = z.pods
-            # if self.blitz_attack is False:
-            explore_moves = []
+            move = []
             for l in z.links:
                 if self.lead_to_unexplored(l) or (l.pt > 0 and not l.owned):
-                    explore_moves.append(l)
-            explore_moves.sort(key=lambda x: -x.pt)
-            for em in explore_moves:
-                if pods > 0:
-                    # best = explore_moves[0]
-                    # log(f"Best explore from {z} is {best}")
-                    move.append(f"1 {z.id} {em.id}")
-                    pods -= 1
-            if pods > 0:
-                if pods > z.attack.enemy:
-                    log(f"Can attack from {z}")
-                    move.append(f"{pods} {z.id} {z.attack.id}")
-                # else:
-                #     flee = z.flee()
-                #     if flee:
-                #         move.append(f"{pods} {z.id} {flee.id}")
+                    move.append(l)
+            move.sort(key=lambda x: -x.pt)
 
-        if len(move):
-            print(" ".join(move))
+            for l in z.links:
+                if l not in move and l.owner_id not in (-1, self.my_id):
+                    move.append(l)
+            move.append(z.attack)
+            base_pods = z.pods // len(move)
+            excess = z.pods % len(move)
+            for idx, m in enumerate(move):
+                pds = base_pods
+                pds += (idx < excess)
+                all_moves.append(f"{pds} {z.id} {m.id}")
+
+
+        if len(all_moves):
+            print(" ".join(all_moves))
         else:
             print("WAIT")
 
