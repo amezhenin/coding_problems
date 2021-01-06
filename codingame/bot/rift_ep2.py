@@ -8,7 +8,7 @@ def log(msg):
 
 POD_COST = 20
 EXPLORE_ROUNDS = 4
-BLITZ = 7
+BLITZ = 8
 
 
 class Zone:
