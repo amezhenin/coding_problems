@@ -6,6 +6,8 @@ import sys
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
+# FIXME: Use BOMB
+# FIXME: Use INC
 
 class Game:
     def __init__(self):
@@ -35,8 +37,7 @@ class Game:
                 if player == 1 and bots > 0:
                     my_bots.append((entity_id, bots))
                 factory_owner[entity_id] = player
-            else:
-                assert entity_type == "TROOP"
+            elif entity_type == "TROOP":
                 """
                 arg1: player that owns the troop: 1 for you or -1 for your opponent
                 arg2: identifier of the factory from where the troop leaves
@@ -50,6 +51,9 @@ class Game:
                 # arg_4 = int(inputs[5])
                 # arg_5 = int(inputs[6])
                 pass
+            else:
+                assert entity_type == "BOMB"
+                # FIXME use bombs
 
         log(f"FO: {factory_owner}")
         my_bots.sort(key=lambda x: -x[1])
