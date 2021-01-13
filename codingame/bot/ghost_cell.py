@@ -6,10 +6,8 @@ import sys
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
-# FIXME: Use BOMB
-# FIXME: Use INC
-LINKS_MAX_DIST = 5
-BOMB_ROUNDS = (1, 20)
+LINKS_MAX_DIST = 6
+BOMB_ROUNDS = (1, 10)
 
 class Factory:
     def __init__(self, factory_id):
