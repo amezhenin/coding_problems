@@ -8,11 +8,14 @@ def log(msg):
 
 # FIXME: Use BOMB
 # FIXME: Use INC
+LINKS_MAX_DIST = 5
+BOMB_ROUNDS = (1, 20)
 
 class Factory:
     def __init__(self, factory_id):
         self.id = factory_id
-        self.links = {}
+        self.all_links = []
+        self.links = []
         # player that owns the factory: 1 for you, -1 for your opponent and 0 if neutral
         self.owner = 0
         self.bots = 0
@@ -23,6 +26,14 @@ class Factory:
         self.bots_to_capture = 0
 
 
+    def pick_links(self):
+        links = sorted(self.all_links, key=lambda x: x[1])
+        flinks = list(filter(lambda x: x[1] <= LINKS_MAX_DIST, links))
+        if len(flinks) > 0:
+            self.links = list(map(lambda x: x[0], flinks))
+        else:
+            log(f"Fact {self.id} has one links to {links[0].id}!")
+            self.links = links[0][0]
 
     def update(self, owner, bots, production):
         self.owner = owner
@@ -63,11 +74,17 @@ class Factory:
 
     def finalize(self):
         self.inc_troops.sort(key=lambda x: x.eta)
-        self.attack_score = 0.0 if self.owner == 1 else 1.0
         self.bots_to_capture = self._bots_to_capture()
+        self.attack_score = 0.0 if self.owner == 1 else 1.0
+
         if self.bots_to_capture > 0:
-            self.attack_score = self.production / self.bots_to_capture
+            self.attack_score += self.production / self.bots_to_capture
         # log(f"F:{self.id} ATK:{self.attack_score} BC:{self.bots_to_capture}")
+
+    def send(self, dest_id, number):
+        assert number <= self.bots, f"{number} <= {self.bots}"
+        self.bots -= number
+        return f"MOVE {self.id} {dest_id} {number}"
 
 
 class Troop:
@@ -91,13 +108,17 @@ class Game:
         for i in range(link_count):
             f1, f2, dist = map(int, input().split())
             # log(f"Links {f1}->{f2} {dist}")
-            self.factories[f1].links[f2] = dist
-            self.factories[f2].links[f1] = dist
+            self.factories[f1].all_links.append((self.factories[f2], dist))
+            self.factories[f2].all_links.append((self.factories[f1], dist))
 
+        for f in self.factories:
+            f.pick_links()
         self.enemy_bomb = False
+        self.round = 0
 
 
     def next_round(self):
+        self.round += 1
         self.enemy_bomb = False
 
         for i in self.factories:
@@ -144,38 +165,45 @@ class Game:
             i.finalize()
 
         moves = []
+        incs = []
         my_facts = list(filter(lambda x: x.owner == 1, self.factories))
-
         my_facts.sort(key=lambda x: -x.bots)
         for factory in my_facts:
-            # this factory will be captured
             if factory.bots_to_capture > 0:
-                log(f"Fact {factory.id} needs help")
+                log(f"Factory {factory.id} needs help")
                 continue
-            link_facts = []
-            for l in factory.links.keys():
-                link_facts.append(self.factories[l])
-            link_facts.sort(key=lambda x: -x.attack_score)
-            for lf in link_facts:
-                if 0 < lf.bots_to_capture <= factory.bots:
-                    moves.append(f"MOVE {factory.id} {lf.id} {lf.bots_to_capture}")
-                    # make sure we will not have double spending of our bots
-                    factory.bots -= lf.bots_to_capture
-                    # make sure we will not send other bots to that factory
-                    lf.bots_to_capture = 0
-            pass
-
-        for factory in my_facts:
-            if factory.bots_to_capture > 0:
-                log(f"Fact {factory.id} STILL needs help")
-                continue
+            targets = []
+            for l in factory.links:
+                if l.bots_to_capture <= factory.bots:
+                    targets.append(l)
+                    log(f"F {l.id} ATK {l.attack_score}")
+            if len(targets) > 0:
+                targets.sort(key=lambda x: -x.attack_score)
+                log(f"Best {l.id}")
+                bots = max(factory.bots//2, targets[0].bots_to_capture)
+                moves.append(factory.send(targets[0].id, bots))
+                # moves.append(factory.send(targets[0].id, targets[0].bots_to_capture))
             if factory.is_upgradable():
-                log(f"INC {factory.id}")
-                moves.append(f"INC {factory.id}")
+                incs.append(f"INC {factory.id}")
+        bomb = []
+        if self.round in BOMB_ROUNDS:
+            dest = None
+            m_bots = -1
+            for f in self.factories:
+                if f.bots > m_bots and f.owner == -1:
+                    dest = f
+                    m_bots = f.bots
+            if dest is not None:
+                src = sorted(dest.all_links, key=lambda x: x[1])
+                for s in src:
+                    if s[0].owner == 1:
+                        bomb.append(f"BOMB {s[0].id} {dest.id}")
 
+        final = bomb + incs + moves[:1]
         if len(moves):
-            print(";".join(moves))
+            print(";".join(final))
         else:
+            log(f"WAIT")
             print("WAIT")
 
 
