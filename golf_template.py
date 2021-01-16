@@ -16,6 +16,11 @@ print(*(sum(map('aeiouAEIOU'.count, i)) for i in sentence))
 
 # import and assign
 C=__import__("collections").Counter
+
+# other tricks
+_,*m=open(0).readlines()
+*m,=zip(*m[::-1])
+''.join(l).count('2021')
 """
 
 
