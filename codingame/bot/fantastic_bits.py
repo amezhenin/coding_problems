@@ -44,9 +44,11 @@ class Game:
         # if 0 you need to score on the right of the map, if 1 you need to score on the left
         self.my_team_id = int(input())
         if self.my_team_id == 0:
-            self.target = RIGHT_TARGET
+            self.my_target = RIGHT_TARGET
+            self.en_target = LEFT_TARGET
         else:
-            self.target = LEFT_TARGET
+            self.my_target = LEFT_TARGET
+            self.en_target = RIGHT_TARGET
         self.wizards = []
         self.enemies = []
         self.balls = []
@@ -87,20 +89,32 @@ class Game:
                 self.bludgers.append(b)
 
         # make actions
-        for w in self.wizards:
-            if w.has_ball is True:
-                print(w.throw(self.target))
-            else:
-                # find closest ball
-                min_dist = 9999999
-                ball = None
-                for b in self.balls:
-                    new_dist = LA.norm(w.pos - b.pos)
-                    if new_dist < min_dist:
-                        min_dist = new_dist
-                        ball = b
-                assert ball is not None
-                print(w.move(ball.pos))
+        print(self.attack(self.wizards[0]))
+        print(self.attack(self.wizards[1]))
+        # print(self.stand_goal(self.wizards[1]))
+
+    def attack(self, wizard):
+        if wizard.has_ball is True:
+            return wizard.throw(self.my_target)
+
+        # find closest ball
+        min_dist = 9999999
+        ball = None
+        for b in self.balls:
+            new_dist = LA.norm(wizard.pos - b.pos)
+            if new_dist < min_dist:
+                min_dist = new_dist
+                ball = b
+        assert ball is not None
+        return wizard.move(ball.pos)
+
+
+    def stand_goal(self, wizard):
+        if wizard.has_ball is True:
+            return wizard.throw(self.my_target)
+        return wizard.move(self.en_target)
+
+
 
 
 if __name__ == "__main__":
