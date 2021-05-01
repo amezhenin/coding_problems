@@ -22,6 +22,45 @@ print(r1)
 
 
 """
+>>>>>>>>>>>>>>>>>>>>   Rust 
+
+
+use std::io;
+
+macro_rules! parse_input {
+    ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
+}
+
+
+fn next_num(mut r:i64) -> i64{
+    let mut res = r;
+    while r>0 {
+        res += r%10;
+        r /=10;
+    }
+    return res;
+}
+
+
+fn main() {
+    let mut input_line = String::new();
+    io::stdin().read_line(&mut input_line).unwrap();
+    let mut r1 = parse_input!(input_line, i64);
+    let mut input_line = String::new();
+    io::stdin().read_line(&mut input_line).unwrap();
+    let mut r2 = parse_input!(input_line, i64);
+
+    while r1 != r2 {
+        if r1 < r2 {r1 = next_num(r1);}
+        else {r2 = next_num(r2);}
+    }
+
+
+    println!("{}", r1);
+}
+
+
+
 >>>>>>>>>>>>>>>>>>>>   C++
 
 
