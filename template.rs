@@ -22,3 +22,26 @@ fn main() {
     let mut r2: u32 = read();
 }
 
+
+/**
+    // read line of ints
+
+    let mut inputs = String::new();
+    io::stdin().read_line(&mut inputs).unwrap();
+
+    for i in inputs.split_whitespace() {
+        let t = parse_input!(i, i32);
+    }
+*/
+
+
+/*
+    let inputs = input_line.split(" ").collect::<Vec<_>>();
+    let x = parse_input!(inputs[0], i32);
+    let y = parse_input!(inputs[1], i32);
+*/
+
+
+/*
+#[allow(dead_code)]
+*/
