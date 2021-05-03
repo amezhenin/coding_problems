@@ -1,5 +1,5 @@
 """
-https://www.codingame.com/ide/puzzle/mime-type
+https://www.codingame.com/training/easy/mime-type
 
 Input
 3
@@ -21,11 +21,6 @@ text/html
 
 
 def alg(nn, qq):
-    """
-    >>> alg()
-
-    >>> alg()
-    """
     d = {i[0].lower(): i[1] for i in nn}
     res = []
     for i in qq:

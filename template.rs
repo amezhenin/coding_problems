@@ -27,24 +27,28 @@ fn main() {
     let sumsq:i32 = s.bytes().map(|c| (c - b'0').pow(2) as i32).sum();
     let happy_sign = |h| if h { ":)" } else { ":(" };
 
-*/
 
-/**
     // read line of ints
-
     let mut inputs = String::new();
     io::stdin().read_line(&mut inputs).unwrap();
 
     for i in inputs.split_whitespace() {
         let t = parse_input!(i, i32);
     }
-*/
 
 
-/*
     let inputs = input_line.split(" ").collect::<Vec<_>>();
     let x = parse_input!(inputs[0], i32);
     let y = parse_input!(inputs[1], i32);
+
+    // take last element of the split
+    let ext = fname.split('.').next_back().unwrap();
+
+    // read and parse into HashMap
+    let ext_mime = (0..n).map(|_| {
+        let v = read_line().split(" ").map(|s| s.to_string()).collect::<Vec<_>>();
+        (v.get(0).unwrap().to_string().to_lowercase(), v.get(1).unwrap().to_string())
+    }).collect::<HashMap<String, String>>();
 */
 
 
