@@ -22,6 +22,12 @@ fn main() {
     let mut r2: u32 = read();
 }
 
+/**
+    // Map and lambda functions
+    let sumsq:i32 = s.bytes().map(|c| (c - b'0').pow(2) as i32).sum();
+    let happy_sign = |h| if h { ":)" } else { ":(" };
+
+*/
 
 /**
     // read line of ints
