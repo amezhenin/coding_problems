@@ -37,4 +37,5 @@ nosetests.xml
 .idea
 
 test.py
+test.rs
 input.txt

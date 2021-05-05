@@ -1,3 +1,4 @@
+#pragma GCC optimize "O3,omit-frame-pointer,inline"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -14,20 +15,27 @@ vector<int> all_cows;
 vector<int> all_bulls;
 int n;
 
+int MAX_N = 8;
+
 int match(string dest)
 {
+    //cerr << "Size: " << all_tests.size() << endl;
     for (int p=0; p<all_tests.size(); p++) {
         int b = 0;
         int c = 0;
         string src = all_tests[p];
         for (int i=0; i<n; i++){
             if (src[i] == dest[i]) b += 1;
-            for (int j=0; j<n; j++){
-                if (src[i] == dest[j]) c += 1;
-            }
+            /*if (n <= MAX_N) {
+                for (int j=0; j<n; j++){
+                    if (src[i] == dest[j]) c += 1;
+                }
+            }*/
         }
-        c -= b;
-        cerr << "Match: " << dest << " " << src << " " << all_bulls[p] - b << " " << all_cows[p] - c << endl;
+        /*if (n <= MAX_N) c -= b;
+        else*/ c = all_cows[p];
+
+        //cerr << "Match: " << dest << " " << src << " " << all_bulls[p] - b << " " << all_cows[p] - c << endl;
 
         if ((all_cows[p] != c) || (all_bulls[p] != b)) return 0;
     }
@@ -37,13 +45,17 @@ int match(string dest)
 string dig = "0123456789";
 
 string next(string last){
+    //cerr << "Last: " << last << endl;
+
     do {
         string ns = dig.substr(0, n);
-        if (dig.substr(0, 1) != "0" && ns!=last && match(ns) == 1){
-            return ns;
+        if (dig.substr(0, 1) != "0" && ns!=last){
+            last = ns;
+            if (match(ns) == 1){
+                return ns;
+            }
         }
     } while (next_permutation(dig.begin(), dig.end()));
-
 }
 
 int main()
