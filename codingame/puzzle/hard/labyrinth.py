@@ -1,6 +1,5 @@
 """
-https://www.codingame.com/ide/puzzle/the-labyrinth
-
+https://www.codingame.com/training/hard/the-labyrinth
 
 # -- wall
 T -- current position

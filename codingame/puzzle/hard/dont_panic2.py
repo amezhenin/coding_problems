@@ -1,5 +1,5 @@
 """
-https://www.codingame.com/ide/puzzle/don't-panic-episode-2
+https://www.codingame.com/training/hard/don't-panic-episode-2
 
 !!! INCOMPLETE !!!
 
