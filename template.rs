@@ -49,6 +49,7 @@ fn main() {
         let v = read_line().split(" ").map(|s| s.to_string()).collect::<Vec<_>>();
         (v.get(0).unwrap().to_string().to_lowercase(), v.get(1).unwrap().to_string())
     }).collect::<HashMap<String, String>>();
+    //.collect::<Vec<String>>();
 */
 
 
