@@ -7,10 +7,11 @@ def log(msg):
 
 
 # max allowed number of trees by size
-MAX_TREES = [2, 2, 2, 5] #  1 -> 2 or 3, 3 -> 5 or 6
+MAX_TREES = [1, 2, 2, 5]
 # day when we flip strategy to late game
 LATE_GAME = 22
 
+# FIXME: better late game with no leftover trees
 
 class Player:
     def __init__(self):
@@ -213,8 +214,8 @@ class Game:
     def update_state(self):
 
         self.day = int(input())  # the game lasts 24 days: 0-23
-        log(f"Day: {self.day}")
         self.nutrients = int(input())  # the base score you gain from the next COMPLETE action
+        log(f"***** Day: {self.day} Nutrients: {self.nutrients} *****")
 
         # sun: your sun points
         # score: your current score
