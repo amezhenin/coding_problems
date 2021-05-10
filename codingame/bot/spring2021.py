@@ -8,8 +8,6 @@ def log(msg):
 
 """
 IDEAS:
-    * better late game with no leftover trees
-        * grow only tier 2 trees
     * mid game logic:
         * select SEED target by how much shadow it will have
     * casting shadows logic. 
@@ -30,7 +28,7 @@ COMPLETE_COST = 4
 # max allowed number of trees by size
 MAX_TREES = [1, 2, 2, 5]
 # day when we flip strategy to late game
-LATE_GAME = 20
+LATE_GAME = 17
 
 
 class Player:
@@ -54,8 +52,8 @@ class Player:
         self.sun -= COMPLETE_COST
         assert self.sun >= 0, "Out of sun"
         # FIXME: don't change the state, create new immutable Player
-        self.trees = list(filter(lambda x: x.idx != tree.idx, self.trees))
-        return f"COMPLETE {tree.idx}"
+        self.trees = list(filter(lambda x: x.cell_idx != tree.cell_idx, self.trees))
+        return f"COMPLETE {tree.cell_idx}"
 
 
     def can_grow(self, tree):
@@ -80,11 +78,11 @@ class Player:
         Growing a size 1 tree into a size 2 tree costs 3 sun points + the number of size 2 trees you already own.
         Growing a size 2 tree into a size 3 tree costs 7 sun points + the number of size 3 trees you already own.
         """
-        assert tree.size < 3, f"Can't grow tree {tree.idx}"
+        assert tree.size < 3, f"Can't grow tree {tree.cell_idx}"
         base_cost = [1, 3, 7][tree.size]
         penalty = self.count_trees(tree.size+1)
         total = base_cost + penalty
-        log(f"Cost of growing {tree.idx}: {total} ({base_cost} base + {penalty} penalty)")
+        log(f"Cost of growing {tree.cell_idx}: {total} ({base_cost} base + {penalty} penalty)")
         return total
 
 
@@ -100,14 +98,14 @@ class Player:
 
 
 class Tree:
-    def __init__(self, idx, size, owner, is_dormant):
-        self.idx = idx
+    def __init__(self, cell_idx, size, owner, is_dormant):
+        self.cell_idx = cell_idx
         self.size = size
         self.owner = owner  # Player instance
         self.is_dormant = is_dormant
 
-    def __str__(self):
-        return f"Tree {self.idx}: {self.size} size"
+    def __repr__(self):
+        return f"Tree {self.cell_idx}: {self.size} size"
 
 
 class Cell:
@@ -116,7 +114,7 @@ class Cell:
         self.richness = richness
         self.links = links
 
-    def __str__(self):
+    def __repr__(self):
         return f"Cell {self.idx}: {self.richness} rich, {self.links} links"
 
 
@@ -136,11 +134,34 @@ class Game:
             # links (neighbours): the index of the neighbouring cell for each direction.
             idx, richness, *links = map(int, input().split())
             # -1 means a wall
-            links = list(filter(lambda x: x != -1, links))
+            # links = list(filter(lambda x: x != -1, links))
             cell = Cell(idx, richness, links)
             self.all_cells[idx] = cell
             # log(cell)
         pass
+
+    def cell_shadow(self, cell):
+        """
+        Calculate number of times during 6 day cycle when we have shadow here
+        """
+        res = 0
+        # log(f"CS {cell}")
+        for d in range(6):
+            next_cell = cell
+            for size in range(1, 4):
+                next_idx = next_cell.links[d]
+                if next_idx == -1:
+                    # log(f"CS break, hit wall")
+                    break
+
+                next_cell = self.all_cells[next_idx]
+                # log(f"CS next cell {next_cell} size {size}")
+                # FIXME: treat seeds as size one trees or 0.5 increase?
+                if next_cell.idx in self.all_trees and self.all_trees[next_cell.idx].size >= size:
+                    # log(f"CS hit {self.all_trees[next_cell.idx]}")
+                    res += 1
+                    break
+        return res
 
 
     def tree_by_move(self, move):
@@ -162,7 +183,7 @@ class Game:
     def max_trees(self, size):
         res = MAX_TREES[size]
         if size == 3:
-            res = min(res, LAST_DAY - self.day + 1)
+            res = min(res, LAST_DAY - self.day)
         return res
 
 
@@ -181,7 +202,7 @@ class Game:
             if cur_count < max_count and best_val > tree.size and self.me.can_grow(tree):
                 best_move = move
                 best_val = tree.size
-                log(f"New best grow: {move}")
+                # log(f"New best grow: {move}")
 
         if best_move is not None:
             return best_move
@@ -191,17 +212,19 @@ class Game:
         # SEED
         seeds = list(filter(lambda x: x.startswith("SEED"), self.me.moves))
 
-        log(f"Tree count {self.me.count_trees(0)} of size {0}")
+        # log(f"Tree count {self.me.count_trees(0)} of size {0}")
         if self.me.count_trees(0) < self.max_trees(0):
             best_move = None
-            best_val = -1
+            best_val = 999
             for move in seeds:
                 tree = self.tree_by_move(move)
                 cell = self.cell_by_move(move)
-                if self.me.can_seed(tree) and cell.richness > best_val:
+                cell_shadow = self.cell_shadow(cell)
+                # FIXME: try to use both shadow and richness
+                if self.me.can_seed(tree) and cell_shadow < best_val:
                     best_move = move
-                    best_val = cell.richness
-                    log(f"New best seed: {move}")
+                    best_val = cell_shadow
+                    log(f"New best seed: {move} with shadow {cell_shadow}")
 
             if best_move is not None:
                 return best_move
@@ -213,12 +236,12 @@ class Game:
 
         # COMPLETE: harvest only when we have too much
         cur_max = self.max_trees(3)
-        log(f"Tree count of size 3: {self.me.count_trees(3)}/{cur_max} ")
+        # log(f"Tree count of size 3: {self.me.count_trees(3)}/{cur_max} ")
         if self.me.count_trees(3) >= cur_max:
             for move in compiles:
                 if self.me.can_complete():
                     tree = self.tree_by_move(move)
-                    log(f"Harvesting excess in mid game: {tree}")
+                    # log(f"Harvesting excess: {tree}")
                     return self.me.complete(tree)
         return None
 
@@ -248,27 +271,6 @@ class Game:
             action = func()
             if action:
                 return action
-
-
-        # testing 
-        # if self.day < LAST_DAY:
-        #     grows = list(filter(lambda x: x.startswith("GROW"), self.me.moves))
-        #     trees = list(map(lambda x: self.tree_by_move(x), grows))
-        #     trees = list(filter(lambda x: x.size != 3, trees))
-        #     trees.sort(key=lambda x: -x.size)
-        #     log(f"Trees to grow: {trees}")
-        #     if len(trees) > 0 and self.me.can_grow(trees[0]):
-        #         return self.me.grow(trees[0])
-        #
-        # total_cost = self.me.count_trees(3) * COMPLETE_COST
-        # ready_to_chop = (total_cost * 2 >= self.me.sun) and (self.day >= LAST_DAY - 1)
-        # log(f"Chop cost {total_cost}, ready to chop {ready_to_chop}")
-        # for move in compiles:
-        #     if ready_to_chop and self.me.can_complete():
-        #         tree = self.tree_by_move(move)
-        #         log(f"Completing the first tree: {tree}")
-        #         return move
-
 
         return "WAIT"
 
