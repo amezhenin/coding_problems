@@ -8,8 +8,6 @@ def log(msg):
 
 """
 IDEAS:
-    * mid game logic:
-        * select SEED target by how much shadow it will have
     * casting shadows logic. 
         * predictions of future sun. check on next day with actual sun
     
@@ -28,7 +26,7 @@ COMPLETE_COST = 4
 # max allowed number of trees by size
 MAX_TREES = [1, 2, 2, 5]
 # day when we flip strategy to late game
-LATE_GAME = 17
+LATE_GAME = 18
 
 
 class Player:
@@ -214,20 +212,21 @@ class Game:
 
         # log(f"Tree count {self.me.count_trees(0)} of size {0}")
         if self.me.count_trees(0) < self.max_trees(0):
-            best_move = None
-            best_val = 999
+            best_move = []
             for move in seeds:
                 tree = self.tree_by_move(move)
                 cell = self.cell_by_move(move)
                 cell_shadow = self.cell_shadow(cell)
-                # FIXME: try to use both shadow and richness
-                if self.me.can_seed(tree) and cell_shadow < best_val:
-                    best_move = move
-                    best_val = cell_shadow
-                    log(f"New best seed: {move} with shadow {cell_shadow}")
+                if self.me.can_seed(tree):
+                    richness = cell.richness
+                    best_move.append((cell_shadow, richness, move))
 
-            if best_move is not None:
-                return best_move
+            # sort by shadows DESC and richness ASC
+            best_move.sorted(key=lambda x: (x[0], -x[1]))
+            # log(best_move)
+
+            if len(best_move) > 0:
+                return best_move[0][2]
 
         return None
 
