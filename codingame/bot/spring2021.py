@@ -26,7 +26,9 @@ COMPLETE_COST = 4
 # max allowed number of trees by size
 MAX_TREES = [1, 2, 2, 5]
 # day when we flip strategy to late game
-LATE_GAME = 18
+LATE_GAME = 16
+# if best possible seed cell have >= of this shadow score we initiate massive chopping
+CHOP_THRESHOLD = 3.0
 
 
 class Player:
@@ -80,7 +82,7 @@ class Player:
         base_cost = [1, 3, 7][tree.size]
         penalty = self.count_trees(tree.size+1)
         total = base_cost + penalty
-        log(f"Cost of growing {tree.cell_idx}: {total} ({base_cost} base + {penalty} penalty)")
+        # log(f"Cost of growing {tree.cell_idx}: {total} ({base_cost} base + {penalty} penalty)")
         return total
 
 
@@ -124,6 +126,8 @@ class Game:
         self.enemy = Player()
         self.all_trees = {}
         self.all_cells = {}
+        # in this day we do as much chopping as we can
+        self.chopping_day = {LAST_DAY, LAST_DAY-1}
 
         number_of_cells = int(input())  # 37
         for i in range(number_of_cells):
@@ -142,7 +146,8 @@ class Game:
         """
         Calculate number of times during 6 day cycle when we have shadow here
         """
-        res = 0
+        # FIXME: take into account current sun position. multiply to 0.90 each previous result
+        res = 0.0
         # log(f"CS {cell}")
         for d in range(6):
             next_cell = cell
@@ -154,11 +159,20 @@ class Game:
 
                 next_cell = self.all_cells[next_idx]
                 # log(f"CS next cell {next_cell} size {size}")
-                # FIXME: treat seeds as size one trees or 0.5 increase?
-                if next_cell.idx in self.all_trees and self.all_trees[next_cell.idx].size >= size:
-                    # log(f"CS hit {self.all_trees[next_cell.idx]}")
-                    res += 1
-                    break
+                if next_cell.idx in self.all_trees:
+                    tree_size = self.all_trees[next_cell.idx].size
+                    # treat seeds as size one trees or 0.5 increase?
+                    if tree_size == 0:
+                        tree_size = 1
+
+                    if tree_size >= size:
+                        res += 1
+                        break
+                    # shadow can be cased in the future by a larger tree
+                    elif tree_size < 3 and tree_size + 1 == size:
+                        res += 0.5
+                        break
+        # log(f"{cell} shadows {res}")
         return res
 
 
@@ -221,27 +235,53 @@ class Game:
                     richness = cell.richness
                     best_move.append((cell_shadow, richness, move))
 
-            # sort by shadows DESC and richness ASC
-            best_move.sorted(key=lambda x: (x[0], -x[1]))
-            # log(best_move)
+            # sort by shadows ASC and richness DESC
+            # best_move.sort(key=lambda x: (x[0], -x[1]))
+            # greedy version
+            best_move.sort(key=lambda x: (-x[1], x[0]))
+            log(f"Pick seed move: {best_move}")
 
             if len(best_move) > 0:
                 return best_move[0][2]
 
         return None
 
-    def pick_complete(self):
+    # def pick_complete(self):
+    #     compiles = list(filter(lambda x: x.startswith("COMPLETE"), self.me.moves))
+    #
+    #     # COMPLETE: harvest only when we have too much
+    #     cur_max = self.max_trees(3)
+    #     # log(f"Tree count of size 3: {self.me.count_trees(3)}/{cur_max} ")
+    #     if self.me.count_trees(3) >= cur_max:
+    #         for move in compiles:
+    #             if self.me.can_complete():
+    #                 tree = self.tree_by_move(move)
+    #                 # log(f"Harvesting excess: {tree}")
+    #                 return self.me.complete(tree)
+    #     return None
+
+    def pick_complete(self, force=False):
         compiles = list(filter(lambda x: x.startswith("COMPLETE"), self.me.moves))
+        best_move = []
 
         # COMPLETE: harvest only when we have too much
-        cur_max = self.max_trees(3)
-        # log(f"Tree count of size 3: {self.me.count_trees(3)}/{cur_max} ")
+
+        cur_max = 0 if force else self.max_trees(3)
+
         if self.me.count_trees(3) >= cur_max:
             for move in compiles:
+                tree = self.tree_by_move(move)
+                cell = self.all_cells[tree.cell_idx]
+                cell_shadow = self.cell_shadow(cell)
                 if self.me.can_complete():
-                    tree = self.tree_by_move(move)
-                    # log(f"Harvesting excess: {tree}")
-                    return self.me.complete(tree)
+                    richness = cell.richness
+                    best_move.append((cell_shadow, richness, move))
+
+        # sort by richness DESC and shadows DESC
+        best_move.sort(key=lambda x: (-x[1], -x[0]))
+        log(f"Chop move: {best_move}")
+        if len(best_move) > 0:
+            return best_move[0][2]
         return None
 
 
@@ -251,11 +291,35 @@ class Game:
         then seed in the best locations(up to `max_trees`) and harvest if more than `max_trees` for size 3
         """
         log("=== MID game strategy ===")
-        # GROW -> SEED -> COMPLETE
-        for func in [self.pick_grow, self.pick_seed, self.pick_complete]:
-            action = func()
-            if action:
-                return action
+
+        # alternative sequence for chopping day, COMPLETE -> SEED -> GROW
+        if self.day not in self.chopping_day:
+            # if we have too much pollution, we show chop all trees tomorrow
+            seed_move = self.pick_seed()
+            # # FIXME: uncomment
+            # if seed_move:
+            #     cell = self.cell_by_move(seed_move)
+            #     cell_shadow = self.cell_shadow(cell)
+            #     if cell_shadow >= CHOP_THRESHOLD:
+            #         # save money and chop everything tomorrow
+            #         self.chopping_day.add(self.day + 1)
+            #         return "WAIT"
+
+            grow_move = self.pick_grow()
+            complete_move = self.pick_complete()
+
+            # default sequence
+            moves = [grow_move, seed_move, complete_move]
+            log(f"Regular day: {moves}")
+
+        else:
+            complete_move = self.pick_complete(force=True)
+            moves = [complete_move, self.pick_seed(), self.pick_grow()]
+            log(f"Yey, chopping day: {moves}")
+
+        for move in moves:
+            if move:
+                return move
 
         return "WAIT"
 
