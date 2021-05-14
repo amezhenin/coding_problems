@@ -8,6 +8,10 @@ def log(msg):
 
 """
 IDEAS:
+    * (!) chop more if we are falling behind in sun
+    * sorting for GROW options
+    * in LATE game you don't grow. only chop t3 trees last day and collect SUN 
+    
     * casting shadows logic. 
         * predictions of future sun. check on next day with actual sun
     
@@ -26,13 +30,13 @@ COMPLETE_COST = 4
 # max allowed number of trees by size
 MAX_TREES = [1, 2, 2, 5]
 # day when we flip strategy to late game
-LATE_GAME = 16
-# if best possible seed cell have >= of this shadow score we initiate massive chopping
-CHOP_THRESHOLD = 3.0
+LATE_GAME = 18
+
 
 
 class Player:
-    def __init__(self):
+    def __init__(self, pid):
+        self.pid = pid
         self.score = 0
         self.sun = 0
         self.is_waiting = False
@@ -122,12 +126,10 @@ class Game:
     def __init__(self):
         self.day = 0
         self.nutrients = 0
-        self.me = Player()
-        self.enemy = Player()
+        self.me = Player(pid=0)
+        self.enemy = Player(pid=1)
         self.all_trees = {}
         self.all_cells = {}
-        # in this day we do as much chopping as we can
-        self.chopping_day = {LAST_DAY, LAST_DAY-1}
 
         number_of_cells = int(input())  # 37
         for i in range(number_of_cells):
@@ -146,13 +148,13 @@ class Game:
         """
         Calculate number of times during 6 day cycle when we have shadow here
         """
-        # FIXME: take into account current sun position. multiply to 0.90 each previous result
         res = 0.0
         # log(f"CS {cell}")
-        for d in range(6):
+        for d in range(self.day, self.day+6):
+            res *= 0.95         # FIXME: magic number
             next_cell = cell
             for size in range(1, 4):
-                next_idx = next_cell.links[d]
+                next_idx = next_cell.links[d%6]
                 if next_idx == -1:
                     # log(f"CS break, hit wall")
                     break
@@ -160,17 +162,18 @@ class Game:
                 next_cell = self.all_cells[next_idx]
                 # log(f"CS next cell {next_cell} size {size}")
                 if next_cell.idx in self.all_trees:
-                    tree_size = self.all_trees[next_cell.idx].size
+                    tree = self.all_trees[next_cell.idx]
+                    penalty = 0 if (tree.owner.pid == 0) else -0.5         # FIXME: magic number
                     # treat seeds as size one trees or 0.5 increase?
-                    if tree_size == 0:
-                        tree_size = 1
+                    if tree.size == 0:
+                        tree.size = 1
 
-                    if tree_size >= size:
-                        res += 1
+                    if tree.size >= size:
+                        res += (1 + penalty)         # FIXME: magic number
                         break
                     # shadow can be cased in the future by a larger tree
-                    elif tree_size < 3 and tree_size + 1 == size:
-                        res += 0.5
+                    elif tree.size < 3 and tree.size + 1 == size:
+                        res += (0.5 + penalty)         # FIXME: magic number
                         break
         # log(f"{cell} shadows {res}")
         return res
@@ -236,10 +239,10 @@ class Game:
                     best_move.append((cell_shadow, richness, move))
 
             # sort by shadows ASC and richness DESC
-            # best_move.sort(key=lambda x: (x[0], -x[1]))
+            best_move.sort(key=lambda x: (x[0], -x[1]))
             # greedy version
-            best_move.sort(key=lambda x: (-x[1], x[0]))
-            log(f"Pick seed move: {best_move}")
+            #best_move.sort(key=lambda x: (-x[1], x[0]))
+            # log(f"Pick seed move: {best_move}")
 
             if len(best_move) > 0:
                 return best_move[0][2]
@@ -293,29 +296,15 @@ class Game:
         log("=== MID game strategy ===")
 
         # alternative sequence for chopping day, COMPLETE -> SEED -> GROW
-        if self.day not in self.chopping_day:
-            # if we have too much pollution, we show chop all trees tomorrow
-            seed_move = self.pick_seed()
-            # # FIXME: uncomment
-            # if seed_move:
-            #     cell = self.cell_by_move(seed_move)
-            #     cell_shadow = self.cell_shadow(cell)
-            #     if cell_shadow >= CHOP_THRESHOLD:
-            #         # save money and chop everything tomorrow
-            #         self.chopping_day.add(self.day + 1)
-            #         return "WAIT"
 
-            grow_move = self.pick_grow()
-            complete_move = self.pick_complete()
+        # if we have too much pollution, we show chop all trees tomorrow
+        seed_move = self.pick_seed()
+        grow_move = self.pick_grow()
+        complete_move = self.pick_complete()
 
-            # default sequence
-            moves = [grow_move, seed_move, complete_move]
-            log(f"Regular day: {moves}")
-
-        else:
-            complete_move = self.pick_complete(force=True)
-            moves = [complete_move, self.pick_seed(), self.pick_grow()]
-            log(f"Yey, chopping day: {moves}")
+        # default sequence
+        moves = [grow_move, seed_move, complete_move]
+        log(f"Regular day: {moves}")
 
         for move in moves:
             if move:
@@ -330,8 +319,14 @@ class Game:
         """
         log("=== LATE game strategy ===")
         # COMPLETE -> GROW
-        for func in [self.pick_complete, self.pick_grow]:
-            action = func()
+        # for func in [self.pick_complete, self.pick_grow]:
+        #     action = func()
+        #     if action:
+        #         return action
+
+        if self.day >= LATE_GAME:
+        # if self.day == LAST_DAY:
+            action = self.pick_complete(force=True)
             if action:
                 return action
 
