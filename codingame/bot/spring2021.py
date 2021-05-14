@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 https://www.codingame.com/contests/spring-challenge-2021
 """
@@ -26,15 +27,20 @@ LAST_DAY = 23
 # cost of completing the tree
 COMPLETE_COST = 4
 
-
 # max allowed number of trees by size
 MAX_TREES = [1, 2, 2, 5]
 # day when we flip strategy to late game
-LATE_GAME = 18
+LATE_GAME = 17
 
+# evaluation of the shadow in the cell
+SHADOW_INFLATION = 1.05  # FIXME: why it is not less than 1?
+SHADOW_OPP_PENALTY = -0.70
+SHADOW_COST = 1
+SHADOW_PARTIAL_COST = 0.55
 
 
 class Player:
+
     def __init__(self, pid):
         self.pid = pid
         self.score = 0
@@ -43,8 +49,10 @@ class Player:
         self.trees = []
         self.moves = []
 
+
     def count_trees(self, size):
         return sum(map(lambda x: x.size == size, self.trees))
+
 
     def can_complete(self):
         # log(f"Can complete? sun: {self.sun} cost: {COMPLETE_COST}")
@@ -70,11 +78,11 @@ class Player:
 
     def grow(self, tree):
         # log(f"Growing {tree}")
-
         self.sun -= self.grow_cost(tree)
         assert self.sun >= 0, "Out of sun"
         # FIXME: don't change the state, create new immutable Player
         return f"GROW {tree.idx}"
+
 
     def grow_cost(self, tree):
         """
@@ -84,7 +92,7 @@ class Player:
         """
         assert tree.size < 3, f"Can't grow tree {tree.cell_idx}"
         base_cost = [1, 3, 7][tree.size]
-        penalty = self.count_trees(tree.size+1)
+        penalty = self.count_trees(tree.size + 1)
         total = base_cost + penalty
         # log(f"Cost of growing {tree.cell_idx}: {total} ({base_cost} base + {penalty} penalty)")
         return total
@@ -102,27 +110,32 @@ class Player:
 
 
 class Tree:
+
     def __init__(self, cell_idx, size, owner, is_dormant):
         self.cell_idx = cell_idx
         self.size = size
         self.owner = owner  # Player instance
         self.is_dormant = is_dormant
 
+
     def __repr__(self):
         return f"Tree {self.cell_idx}: {self.size} size"
 
 
 class Cell:
+
     def __init__(self, idx, richness, links):
         self.idx = idx
         self.richness = richness
         self.links = links
+
 
     def __repr__(self):
         return f"Cell {self.idx}: {self.richness} rich, {self.links} links"
 
 
 class Game:
+
     def __init__(self):
         self.day = 0
         self.nutrients = 0
@@ -144,17 +157,18 @@ class Game:
             # log(cell)
         pass
 
+
     def cell_shadow(self, cell):
         """
         Calculate number of times during 6 day cycle when we have shadow here
         """
         res = 0.0
         # log(f"CS {cell}")
-        for d in range(self.day, self.day+6):
-            res *= 0.95         # FIXME: magic number
+        for d in range(self.day + 6, self.day, -1):
+            res *= SHADOW_INFLATION
             next_cell = cell
             for size in range(1, 4):
-                next_idx = next_cell.links[d%6]
+                next_idx = next_cell.links[d % 6]
                 if next_idx == -1:
                     # log(f"CS break, hit wall")
                     break
@@ -163,17 +177,17 @@ class Game:
                 # log(f"CS next cell {next_cell} size {size}")
                 if next_cell.idx in self.all_trees:
                     tree = self.all_trees[next_cell.idx]
-                    penalty = 0 if (tree.owner.pid == 0) else -0.5         # FIXME: magic number
+                    penalty = 0 if (tree.owner.pid == 0) else SHADOW_OPP_PENALTY
                     # treat seeds as size one trees or 0.5 increase?
                     if tree.size == 0:
                         tree.size = 1
 
                     if tree.size >= size:
-                        res += (1 + penalty)         # FIXME: magic number
+                        res += (SHADOW_COST + penalty)
                         break
                     # shadow can be cased in the future by a larger tree
                     elif tree.size < 3 and tree.size + 1 == size:
-                        res += (0.5 + penalty)         # FIXME: magic number
+                        res += (SHADOW_PARTIAL_COST + penalty)
                         break
         # log(f"{cell} shadows {res}")
         return res
@@ -210,7 +224,7 @@ class Game:
         best_val = 999
         for move in grows:
             tree = self.tree_by_move(move)
-            next_size = tree.size+1
+            next_size = tree.size + 1
             max_count = self.max_trees(next_size)
             cur_count = self.me.count_trees(next_size)
             # log(f"Tree count {cur_count} of size {next_size}")
@@ -243,7 +257,6 @@ class Game:
             # greedy version
             #best_move.sort(key=lambda x: (-x[1], x[0]))
             # log(f"Pick seed move: {best_move}")
-
             if len(best_move) > 0:
                 return best_move[0][2]
 
@@ -280,9 +293,9 @@ class Game:
                     richness = cell.richness
                     best_move.append((cell_shadow, richness, move))
 
-        # sort by richness DESC and shadows DESC
-        best_move.sort(key=lambda x: (-x[1], -x[0]))
-        log(f"Chop move: {best_move}")
+        # sort by shadows DESC and richness DESC
+        best_move.sort(key=lambda x: (-x[0], -x[1]))
+        # log(f"Chop move: {best_move}")
         if len(best_move) > 0:
             return best_move[0][2]
         return None
@@ -296,7 +309,6 @@ class Game:
         log("=== MID game strategy ===")
 
         # alternative sequence for chopping day, COMPLETE -> SEED -> GROW
-
         # if we have too much pollution, we show chop all trees tomorrow
         seed_move = self.pick_seed()
         grow_move = self.pick_grow()
@@ -323,9 +335,8 @@ class Game:
         #     action = func()
         #     if action:
         #         return action
-
         if self.day >= LATE_GAME:
-        # if self.day == LAST_DAY:
+            # if self.day == LAST_DAY:
             action = self.pick_complete(force=True)
             if action:
                 return action
@@ -334,7 +345,6 @@ class Game:
 
 
     def update_state(self):
-
         self.day = int(input())  # the game lasts 24 days: 0-23
         self.nutrients = int(input())  # the base score you gain from the next COMPLETE action
         log(f"***** Day: {self.day} Nutrients: {self.nutrients} *****")
