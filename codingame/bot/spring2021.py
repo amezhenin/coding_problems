@@ -38,6 +38,23 @@ SHADOW_OPP_PENALTY = -0.70
 SHADOW_COST = 1
 SHADOW_PARTIAL_COST = 0.55
 
+# evaluation of moves
+EVAL_MOVES = True
+# COMPLETE
+MIN_COMPL_TREES = 4
+COMPLETE_BONUS = 1000
+MIN_COMPL_FACTOR = 100
+COMPLETE_END_BONUS = 1000
+# GROW
+GROW_BONUS = 100
+GROW_END_PENALTY = -1000
+GROW_SIZE_BONUS_FACTOR = 10
+# SEED
+SEED_BONUS = 200
+SEED_SM_TREE_PENALTY = -1000
+SEED_SHADOW_PENALTY = -20
+SEED_RICH_BONUS_FACTOR = 10
+
 
 class Player:
 
@@ -48,10 +65,18 @@ class Player:
         self.is_waiting = False
         self.trees = []
         self.moves = []
+        self._tree_size = None
 
 
     def count_trees(self, size):
-        return sum(map(lambda x: x.size == size, self.trees))
+        if self._tree_size is None:
+            # log(f"Counting for {self.trees}")
+            self._tree_size = [0, 0, 0, 0]
+            for i in self.trees:
+                self._tree_size[i.size] += 1
+            # log(f"Tree sizes {self._tree_size} for {self.trees}")
+
+        return self._tree_size[size]
 
 
     def can_complete(self):
@@ -131,7 +156,7 @@ class Cell:
 
 
     def __repr__(self):
-        return f"Cell {self.idx}: {self.richness} rich, {self.links} links"
+        return f"Cell {self.idx}: {self.richness} rich"
 
 
 class Game:
@@ -204,10 +229,81 @@ class Game:
 
     def next_round(self):
         self.update_state()
-        if self.day < LATE_GAME:
+
+        if EVAL_MOVES:
+            print(self.eval_move_strategy())
+        elif self.day < LATE_GAME:
             print(self.mid_game())
         else:
             print(self.late_game())
+
+
+    """**********************************************************************
+       ******           ALT SOLUTION: EVALUATE MOVES                   ******
+    """
+    def eval_move_strategy(self):
+        log("=====    EVAL MOVE strategy    =====")
+        moves = []
+        for move in self.me.moves:
+            score = self.eval_move(move)
+            moves.append((score, move))
+        log(f"^^^^^ End eval ^^^^^")
+
+        # score DESC
+        moves.sort(key=lambda x: -x[0])
+        log(f"Moves: {moves}")
+        return moves[0][1]
+
+
+    def eval_move(self, move):
+        res = 0.0
+
+        if move.startswith("COMPLETE"):
+            min_complete_diff = self.me.count_trees(3) - MIN_COMPL_TREES
+            # we have something to complete
+            if min_complete_diff >= 0:
+                res += COMPLETE_BONUS
+            # more is better and vice-versa
+            res += min_complete_diff * MIN_COMPL_FACTOR
+            # last day bonus (additional)
+            if self.day >= LAST_DAY - 1:
+                res += COMPLETE_END_BONUS
+
+        elif move.startswith("GROW"):
+            res += GROW_BONUS
+            tree = self.tree_by_move(move)
+            res += tree.size * GROW_SIZE_BONUS_FACTOR
+            # last day penalty
+            if self.day >= LAST_DAY - 1:
+                res += GROW_END_PENALTY
+
+        elif move.startswith("SEED"):
+            # we want free seeds
+            seed_trees = self.me.count_trees(0)
+            # log(f"Seed trees: {seed_trees}")
+            if seed_trees == 0:
+                res += SEED_BONUS
+            else:
+                res -= SEED_BONUS
+            # don't use small trees for seeds
+            tree = self.tree_by_move(move)
+            if tree.size == 1:
+                res += SEED_SM_TREE_PENALTY
+            # take shadow and richness into consideration
+            cell = self.cell_by_move(move)
+
+            shadow_score = self.cell_shadow(cell)
+            res += int(shadow_score * SEED_SHADOW_PENALTY)
+            res += cell.richness * SEED_RICH_BONUS_FACTOR
+            # log(f"Total {res}, {cell} shadow {int(shadow_score * SEED_SHADOW_PENALTY)}")
+
+
+        return res
+
+    """******           ALT SOLUTION: EVALUATE MOVES                   ******
+       **********************************************************************
+    """
+
 
     def max_trees(self, size):
         res = MAX_TREES[size]
@@ -262,20 +358,6 @@ class Game:
 
         return None
 
-    # def pick_complete(self):
-    #     compiles = list(filter(lambda x: x.startswith("COMPLETE"), self.me.moves))
-    #
-    #     # COMPLETE: harvest only when we have too much
-    #     cur_max = self.max_trees(3)
-    #     # log(f"Tree count of size 3: {self.me.count_trees(3)}/{cur_max} ")
-    #     if self.me.count_trees(3) >= cur_max:
-    #         for move in compiles:
-    #             if self.me.can_complete():
-    #                 tree = self.tree_by_move(move)
-    #                 # log(f"Harvesting excess: {tree}")
-    #                 return self.me.complete(tree)
-    #     return None
-
     def pick_complete(self, force=False):
         compiles = list(filter(lambda x: x.startswith("COMPLETE"), self.me.moves))
         best_move = []
@@ -306,7 +388,7 @@ class Game:
         In the middle (and early) game we want to grow trees first (up to `max_trees` for sizes 1 and 2),
         then seed in the best locations(up to `max_trees`) and harvest if more than `max_trees` for size 3
         """
-        log("=== MID game strategy ===")
+        log("=====    MID game strategy    =====")
 
         # alternative sequence for chopping day, COMPLETE -> SEED -> GROW
         # if we have too much pollution, we show chop all trees tomorrow
@@ -329,7 +411,7 @@ class Game:
         """
         In the late game we are trying to complete trees that we have and finish growing existing trees
         """
-        log("=== LATE game strategy ===")
+        log("=====    LATE game strategy   =====")
         # COMPLETE -> GROW
         # for func in [self.pick_complete, self.pick_grow]:
         #     action = func()
@@ -348,6 +430,9 @@ class Game:
         self.day = int(input())  # the game lasts 24 days: 0-23
         self.nutrients = int(input())  # the base score you gain from the next COMPLETE action
         log(f"***** Day: {self.day} Nutrients: {self.nutrients} *****")
+
+        self.me = Player(pid=0)
+        self.enemy = Player(pid=1)
 
         # sun: your sun points
         # score: your current score
