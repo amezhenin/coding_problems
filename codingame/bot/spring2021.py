@@ -33,18 +33,19 @@ MAX_TREES = [1, 2, 2, 5]
 LATE_GAME = 17
 
 # evaluation of the shadow in the cell
-SHADOW_INFLATION = 1.05  # FIXME: why it is not less than 1?
-SHADOW_OPP_PENALTY = -0.70
+SHADOW_INFLATION = 1.15  # why it is not less than 1?
+SHADOW_OPP_PENALTY = -0.60
 SHADOW_COST = 1
-SHADOW_PARTIAL_COST = 0.55
+SHADOW_PARTIAL_COST = 0.65
 
 # evaluation of moves
 EVAL_MOVES = True
 # COMPLETE
-MIN_COMPL_TREES = 4
+MIN_COMPL_TREES = 5
 COMPLETE_BONUS = 1000
 MIN_COMPL_FACTOR = 100
 COMPLETE_END_BONUS = 1000
+COMPLETE_LAST_PENALTY = -3000
 # GROW
 GROW_BONUS = 100
 GROW_END_PENALTY = -1000
@@ -268,6 +269,10 @@ class Game:
             # last day bonus (additional)
             if self.day >= LAST_DAY - 1:
                 res += COMPLETE_END_BONUS
+            # don't complete trees with small return
+            score = self.complete_score(move)
+            if score < 2:
+                res += COMPLETE_LAST_PENALTY
 
         elif move.startswith("GROW"):
             res += GROW_BONUS
@@ -378,9 +383,20 @@ class Game:
         # sort by shadows DESC and richness DESC
         best_move.sort(key=lambda x: (-x[0], -x[1]))
         # log(f"Chop move: {best_move}")
+        # FIXME: if complete scores only 1 point => skip
         if len(best_move) > 0:
             return best_move[0][2]
         return None
+
+
+    def complete_score(self, move):
+        assert move.startswith("COMPLETE")
+        tree = self.tree_by_move(move)
+        cell = self.all_cells[tree.cell_idx]
+        richness_bonus = [0, 0, 2, 4][cell.richness]
+        score = self.nutrients + richness_bonus
+        log(f"Complete score for {tree} is {score}")
+        return score
 
 
     def mid_game(self):
