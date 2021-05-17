@@ -7,21 +7,6 @@ def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
 
-"""
-IDEAS:
-    * (!) chop more if we are falling behind in sun
-    * sorting for GROW options
-    * in LATE game you don't grow. only chop t3 trees last day and collect SUN 
-    
-    * casting shadows logic. 
-        * predictions of future sun. check on next day with actual sun
-    
-    * generation of moves for future use. check it's output with given moves at first
-    * BFS over states with current heuristic. 
-        * optimization: Mid stage (max -> my_sun_produced - enemy_sun_produced)
-        * optimization: Late stage (max -> my_score - enemy_score)
-"""
-
 # final day of the game(0-indexed).
 LAST_DAY = 23
 # cost of completing the tree
@@ -42,8 +27,8 @@ SHADOW_PARTIAL_COST = 0.65
 EVAL_MOVES = True
 # COMPLETE
 MIN_COMPL_TREES = 5
-COMPLETE_BONUS = 1000
-MIN_COMPL_FACTOR = 100
+COMPLETE_BONUS = 96  # 95-100, old 1000
+MIN_COMPL_FACTOR = 30  # old 10
 COMPLETE_END_BONUS = 1000
 COMPLETE_LAST_PENALTY = -3000
 # GROW
@@ -55,6 +40,8 @@ SEED_BONUS = 200
 SEED_SM_TREE_PENALTY = -1000
 SEED_SHADOW_PENALTY = -20
 SEED_RICH_BONUS_FACTOR = 10
+# WAIT
+SUN_GAIN_FACTOR = 5  # old is 0
 
 
 class Player:
@@ -301,7 +288,13 @@ class Game:
             res += int(shadow_score * SEED_SHADOW_PENALTY)
             res += cell.richness * SEED_RICH_BONUS_FACTOR
             # log(f"Total {res}, {cell} shadow {int(shadow_score * SEED_SHADOW_PENALTY)}")
-
+        else:
+            assert move == "WAIT"
+            next_gain = 0
+            for i in range(1, 4):
+                next_gain += i * self.me.count_trees(i)
+            # log(f"Next day can gain {next_gain} sun")
+            res += next_gain * SUN_GAIN_FACTOR
 
         return res
 
