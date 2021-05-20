@@ -3,8 +3,6 @@
 https://www.codingame.com/contests/spring-challenge-2021
 """
 import sys
-
-
 def log(msg):
     print(msg, file=sys.stderr, flush=True)
 
@@ -14,37 +12,36 @@ LAST_DAY = 23
 # cost of completing the tree
 COMPLETE_COST = 4
 
-# # max allowed number of trees by size
-# MAX_TREES = [1, 2, 2, 55]
+# max allowed number of trees by size
+MAX_TREES = [1, 2, 2, 5]
+# day when we flip strategy to late game
+LATE_GAME = 17
 
 # evaluation of the shadow in the cell
-SHADOW_INFLATION = 0.9  # 1.15  # why it is not less than 1?
+SHADOW_INFLATION = 1.15  # why it is not less than 1?
 SHADOW_OPP_PENALTY = -0.60
-SHADOW_COST = 1.0
+SHADOW_COST = 1
 SHADOW_PARTIAL_COST = 0.65
 
 # evaluation of moves
-
+EVAL_MOVES = True
 # COMPLETE
-COMPLETE_SCALING = 2
-# MIN_COMPL_TREES = 5
-# COMPLETE_BONUS = 96  # 95-100, old 1000
-# MIN_COMPL_FACTOR = 30  # old 10
-# COMPLETE_END_BONUS = 1000
-# COMPLETE_LAST_PENALTY = -3000
-# # GROW
-# GROW_BONUS = 100
-# GROW_END_PENALTY = -1000
-# GROW_SIZE_BONUS_FACTOR = 10
+MIN_COMPL_TREES = 5
+COMPLETE_BONUS = 96  # 95-100, old 1000
+MIN_COMPL_FACTOR = 30  # old 10
+COMPLETE_END_BONUS = 1000
+COMPLETE_LAST_PENALTY = -3000
+# GROW
+GROW_BONUS = 100
+GROW_END_PENALTY = -1000
+GROW_SIZE_BONUS_FACTOR = 10
 # SEED
 SEED_BONUS = 200
 SEED_SM_TREE_PENALTY = -1000
 SEED_SHADOW_PENALTY = -20
 SEED_RICH_BONUS_FACTOR = 10
-
-
-# # WAIT
-# SUN_GAIN_FACTOR = 5  # old is 0
+# WAIT
+SUN_GAIN_FACTOR = 5  # old is 0
 
 
 class Player:
@@ -60,13 +57,12 @@ class Player:
 
 
     def count_trees(self, size):
-        # FIXME: WTF is the problem with this count !?!?!?
         if self._tree_size is None:
             # log(f"Counting for {self.trees}")
             self._tree_size = [0, 0, 0, 0]
             for i in self.trees:
                 self._tree_size[i.size] += 1
-            log(f"Tree sizes {self._tree_size} for {self.trees}")
+            # log(f"Tree sizes {self._tree_size} for {self.trees}")
 
         return self._tree_size[size]
 
@@ -130,14 +126,10 @@ class Tree:
 
     def __init__(self, cell_idx, size, owner, is_dormant):
         self.cell_idx = cell_idx
-        self.__size = size
+        self.size = size
         self.owner = owner  # Player instance
         self.is_dormant = is_dormant
 
-
-    @property
-    def size(self):
-        return self.__size
 
     def __repr__(self):
         return f"Tree {self.cell_idx}: {self.size} size"
@@ -179,49 +171,37 @@ class Game:
         pass
 
 
-    def cell_shadow(self, cell, last_day=LAST_DAY):
+    def cell_shadow(self, cell):
         """
         Calculate number of times during 6 day cycle when we have shadow here
         """
         res = 0.0
         # log(f"CS {cell}")
-        cache = {}
-        for d in range(last_day, self.day, -1):
+        for d in range(self.day + 6, self.day, -1):
             res *= SHADOW_INFLATION
+            next_cell = cell
+            for size in range(1, 4):
+                next_idx = next_cell.links[d % 6]
+                if next_idx == -1:
+                    # log(f"CS break, hit wall")
+                    break
 
-            if d % 6 not in cache:
-                # log("Cache miss")
+                next_cell = self.all_cells[next_idx]
+                # log(f"CS next cell {next_cell} size {size}")
+                if next_cell.idx in self.all_trees:
+                    tree = self.all_trees[next_cell.idx]
+                    penalty = 0 if (tree.owner.pid == 0) else SHADOW_OPP_PENALTY
+                    # treat seeds as size one trees or 0.5 increase?
+                    if tree.size == 0:
+                        tree.size = 1
 
-                next_cell = cell
-                val = 0.0
-                for size in range(1, 4):
-                    next_idx = next_cell.links[d % 6]
-                    if next_idx == -1:
-                        # log(f"CS break, hit wall")
+                    if tree.size >= size:
+                        res += (SHADOW_COST + penalty)
                         break
-
-                    next_cell = self.all_cells[next_idx]
-                    # log(f"CS next cell {next_cell} size {size}")
-                    if next_cell.idx in self.all_trees:
-                        tree = self.all_trees[next_cell.idx]
-                        tree_size = tree.size
-                        penalty = 0 if (tree.owner.pid == 0) else SHADOW_OPP_PENALTY
-                        # treat seeds as size one trees or 0.5 increase?
-                        if tree_size == 0:
-                            tree_size = 1
-
-                        if tree_size >= size:
-                            val = SHADOW_COST + penalty
-                            break
-                        # shadow can be cased in the future by a larger tree
-                        elif tree_size < 3 and tree_size + 1 == size:
-                            val = (SHADOW_PARTIAL_COST + penalty)
-                            break
-                cache[d % 6] = val
-
-            res += cache[d % 6]
-            # log(f"Cell {cell.idx} Day {d} shadow {res}")
-
+                    # shadow can be cased in the future by a larger tree
+                    elif tree.size < 3 and tree.size + 1 == size:
+                        res += (SHADOW_PARTIAL_COST + penalty)
+                        break
         # log(f"{cell} shadows {res}")
         return res
 
@@ -229,7 +209,6 @@ class Game:
     def tree_by_move(self, move):
         idx = int(move.split(" ")[1])
         return self.all_trees[idx]
-
 
     def cell_by_move(self, move):
         idx = int(move.split(" ")[2])
@@ -239,21 +218,24 @@ class Game:
     def next_round(self):
         self.update_state()
 
-        print(self.eval_move_strategy())
+        if EVAL_MOVES:
+            print(self.eval_move_strategy())
+        elif self.day < LATE_GAME:
+            print(self.mid_game())
+        else:
+            print(self.late_game())
 
 
     """**********************************************************************
        ******           ALT SOLUTION: EVALUATE MOVES                   ******
     """
-
-
     def eval_move_strategy(self):
-        #log("=====    EVAL MOVE strategy    =====")
+        log("=====    EVAL MOVE strategy    =====")
         moves = []
         for move in self.me.moves:
             score = self.eval_move(move)
             moves.append((score, move))
-        # log(f"^^^^^ End eval ^^^^^")
+        log(f"^^^^^ End eval ^^^^^")
 
         # score DESC
         moves.sort(key=lambda x: -x[0])
@@ -265,26 +247,27 @@ class Game:
         res = 0.0
 
         if move.startswith("COMPLETE"):
-            # this is what we will get right away
-            right_now = self.complete_score(move) * 3
-            # this is what we will get in dividends
-            tree = self.tree_by_move(move)
-            cell = self.all_cells[tree.cell_idx]
-            shadow_score = self.cell_shadow(cell)
-
-            dividends = ((LAST_DAY - self.day - shadow_score) * 3)** COMPLETE_SCALING
-            res = right_now - COMPLETE_COST - dividends
-            # log(f"{move}: {right_now} - 4 - {dividends} = {res}")
+            min_complete_diff = self.me.count_trees(3) - MIN_COMPL_TREES
+            # we have something to complete
+            if min_complete_diff >= 0:
+                res += COMPLETE_BONUS
+            # more is better and vice-versa
+            res += min_complete_diff * MIN_COMPL_FACTOR
+            # last day bonus (additional)
+            if self.day >= LAST_DAY - 1:
+                res += COMPLETE_END_BONUS
+            # don't complete trees with small return
+            score = self.complete_score(move)
+            if score < 2:
+                res += COMPLETE_LAST_PENALTY
 
         elif move.startswith("GROW"):
+            res += GROW_BONUS
             tree = self.tree_by_move(move)
-            # investment price
-            res -= self.me.grow_cost(tree)
-            # this is what we will get in dividends
-            tree = self.tree_by_move(move)
-            cell = self.all_cells[tree.cell_idx]
-            shadow_score = self.cell_shadow(cell)
-            res += (LAST_DAY - self.day - shadow_score) * (tree.size + 1)
+            res += tree.size * GROW_SIZE_BONUS_FACTOR
+            # last day penalty
+            if self.day >= LAST_DAY - 1:
+                res += GROW_END_PENALTY
 
         elif move.startswith("SEED"):
             # we want free seeds
@@ -300,41 +283,156 @@ class Game:
                 res += SEED_SM_TREE_PENALTY
             # take shadow and richness into consideration
             cell = self.cell_by_move(move)
-            shadow_score = self.cell_shadow(cell)
 
+            shadow_score = self.cell_shadow(cell)
             res += int(shadow_score * SEED_SHADOW_PENALTY)
             res += cell.richness * SEED_RICH_BONUS_FACTOR
             # log(f"Total {res}, {cell} shadow {int(shadow_score * SEED_SHADOW_PENALTY)}")
         else:
             assert move == "WAIT"
-            # next_gain = 0
-            # for i in range(1, 4):
-            #     next_gain += i * self.me.count_trees(i)
-            # # log(f"Next day can gain {next_gain} sun")
-            # res += next_gain # * SUN_GAIN_FACTOR
+            next_gain = 0
+            for i in range(1, 4):
+                next_gain += i * self.me.count_trees(i)
+            # log(f"Next day can gain {next_gain} sun")
+            res += next_gain * SUN_GAIN_FACTOR
 
-        # log(f"Score: {res} Move: {move}")
         return res
-
 
     """******           ALT SOLUTION: EVALUATE MOVES                   ******
        **********************************************************************
     """
 
 
-    # def max_trees(self, size):
-    #     res = MAX_TREES[size]
-    #     if size == 3:
-    #         res = min(res, LAST_DAY - self.day)
-    #     return res
+    def max_trees(self, size):
+        res = MAX_TREES[size]
+        if size == 3:
+            res = min(res, LAST_DAY - self.day)
+        return res
+
+
+    def pick_grow(self):
+        # GROW: grow smaller trees first
+        grows = list(filter(lambda x: x.startswith("GROW"), self.me.moves))
+
+        best_move = None
+        best_val = 999
+        for move in grows:
+            tree = self.tree_by_move(move)
+            next_size = tree.size + 1
+            max_count = self.max_trees(next_size)
+            cur_count = self.me.count_trees(next_size)
+            # log(f"Tree count {cur_count} of size {next_size}")
+            if cur_count < max_count and best_val > tree.size and self.me.can_grow(tree):
+                best_move = move
+                best_val = tree.size
+                # log(f"New best grow: {move}")
+
+        if best_move is not None:
+            return best_move
+        return None
+
+    def pick_seed(self):
+        # SEED
+        seeds = list(filter(lambda x: x.startswith("SEED"), self.me.moves))
+
+        # log(f"Tree count {self.me.count_trees(0)} of size {0}")
+        if self.me.count_trees(0) < self.max_trees(0):
+            best_move = []
+            for move in seeds:
+                tree = self.tree_by_move(move)
+                cell = self.cell_by_move(move)
+                cell_shadow = self.cell_shadow(cell)
+                if self.me.can_seed(tree):
+                    richness = cell.richness
+                    best_move.append((cell_shadow, richness, move))
+
+            # sort by shadows ASC and richness DESC
+            best_move.sort(key=lambda x: (x[0], -x[1]))
+            # greedy version
+            #best_move.sort(key=lambda x: (-x[1], x[0]))
+            # log(f"Pick seed move: {best_move}")
+            if len(best_move) > 0:
+                return best_move[0][2]
+
+        return None
+
+    def pick_complete(self, force=False):
+        compiles = list(filter(lambda x: x.startswith("COMPLETE"), self.me.moves))
+        best_move = []
+
+        # COMPLETE: harvest only when we have too much
+
+        cur_max = 0 if force else self.max_trees(3)
+
+        if self.me.count_trees(3) >= cur_max:
+            for move in compiles:
+                tree = self.tree_by_move(move)
+                cell = self.all_cells[tree.cell_idx]
+                cell_shadow = self.cell_shadow(cell)
+                if self.me.can_complete():
+                    richness = cell.richness
+                    best_move.append((cell_shadow, richness, move))
+
+        # sort by shadows DESC and richness DESC
+        best_move.sort(key=lambda x: (-x[0], -x[1]))
+        # log(f"Chop move: {best_move}")
+        # FIXME: if complete scores only 1 point => skip
+        if len(best_move) > 0:
+            return best_move[0][2]
+        return None
+
+
     def complete_score(self, move):
         assert move.startswith("COMPLETE")
         tree = self.tree_by_move(move)
         cell = self.all_cells[tree.cell_idx]
         richness_bonus = [0, 0, 2, 4][cell.richness]
         score = self.nutrients + richness_bonus
-        # log(f"Complete score for {tree} is {score}")
+        log(f"Complete score for {tree} is {score}")
         return score
+
+
+    def mid_game(self):
+        """
+        In the middle (and early) game we want to grow trees first (up to `max_trees` for sizes 1 and 2),
+        then seed in the best locations(up to `max_trees`) and harvest if more than `max_trees` for size 3
+        """
+        log("=====    MID game strategy    =====")
+
+        # alternative sequence for chopping day, COMPLETE -> SEED -> GROW
+        # if we have too much pollution, we show chop all trees tomorrow
+        seed_move = self.pick_seed()
+        grow_move = self.pick_grow()
+        complete_move = self.pick_complete()
+
+        # default sequence
+        moves = [grow_move, seed_move, complete_move]
+        log(f"Regular day: {moves}")
+
+        for move in moves:
+            if move:
+                return move
+
+        return "WAIT"
+
+
+    def late_game(self):
+        """
+        In the late game we are trying to complete trees that we have and finish growing existing trees
+        """
+        log("=====    LATE game strategy   =====")
+        # COMPLETE -> GROW
+        # for func in [self.pick_complete, self.pick_grow]:
+        #     action = func()
+        #     if action:
+        #         return action
+        if self.day >= LATE_GAME:
+            # if self.day == LAST_DAY:
+            action = self.pick_complete(force=True)
+            if action:
+                return action
+
+        return "WAIT"
 
 
     def update_state(self):
