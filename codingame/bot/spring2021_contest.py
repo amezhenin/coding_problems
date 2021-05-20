@@ -193,7 +193,7 @@ class Game:
                     penalty = 0 if (tree.owner.pid == 0) else SHADOW_OPP_PENALTY
                     # treat seeds as size one trees or 0.5 increase?
                     if tree.size == 0:
-                        tree.size = 1
+                        tree.size = 1   # FIXME: THIS IS BUG!!!! do not assign here, see fixed solution
 
                     if tree.size >= size:
                         res += (SHADOW_COST + penalty)
