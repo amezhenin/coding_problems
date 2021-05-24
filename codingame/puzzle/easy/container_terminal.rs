@@ -9,18 +9,12 @@ macro_rules! parse_input {
 
 
 fn alg(line: &str) -> usize {
-    let mut stacks = Vec::<char>::new();
+    let mut stacks = vec![]; // Vec::<char>::new();
     for c in line.chars() {
-        let mut idx: Option<usize> = None;
-        for i in 0..stacks.len() {
-            if stacks[i] >= c {
-                idx = Some(i);
-                break
-            }
-        }
+        let idx = stacks.iter().position(|x| c <= *x);
         match idx {
             Some(i) => stacks[i] = c,
-            None     => stacks.push(c)
+            None    => stacks.push(c)
         }
     }
     stacks.len()
@@ -38,4 +32,14 @@ fn main() {
         let res = alg(&line);
         println!("{}", res);
     }
+}
+
+
+#[test]
+fn test_alg() {
+    assert_eq!(alg("A"), 1);
+    assert_eq!(alg("CBACBACBACBACBACBA"), 3);
+    assert_eq!(alg("CCCCCBBBBBAAAAA"), 1);
+    assert_eq!(alg("BDNIDPD"), 4);
+    assert_eq!(alg("CODINGAME"), 4);
 }
