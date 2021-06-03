@@ -39,3 +39,5 @@ nosetests.xml
 test.py
 test.rs
 input.txt
+output.txt
+rosalind_test.py
