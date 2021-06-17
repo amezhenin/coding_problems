@@ -1,5 +1,6 @@
 /**
  * Docs: https://docs.rs/threadpool/1.8.1/threadpool/
+ *       https://pkolaczk.github.io/multiple-threadpools-rust/
  */
 use threadpool::ThreadPool;
 use std::sync::mpsc::channel;
