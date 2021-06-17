@@ -7,8 +7,8 @@ use std::{thread, time};
 
 
 fn main() {
-    let n_workers:i32 = 4;
-    let n_jobs:i32 = 12;
+    let n_workers:usize = 4;
+    let n_jobs:usize = 12;
     let pool = ThreadPool::new(n_workers);
 
     let (tx, rx) = channel();
@@ -22,6 +22,11 @@ fn main() {
             tx.send((i, i*i)).expect("channel will be there waiting for the pool");
         });
     }
+
+    // dropping tx will close rx as well, so it will be safe to iterate
+    // this is not really needed in this particular code
+    drop(tx);
+
     println!("Waiting for results");
     let mut results = vec![0; n_jobs];
 
@@ -31,6 +36,7 @@ fn main() {
         println!("Main {} received {}", idx, i_res);
         results[idx] = i_res;
     }
+
     for i in 0..n_jobs {
         println!("Final {}", results[i]);
     }
