@@ -1,4 +1,7 @@
-
+"""
+This template can load logs from specific CodinGame and extract referee input from them,
+so some game could be reproduced locally.
+"""
 import json
 import requests
 from getpass import getpass
