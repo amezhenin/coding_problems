@@ -1,22 +1,17 @@
-/**
-https://stepik.org/lesson/541855/step/2?unit=535316
-
-Use Binary Lifting (Kth Ancestor of a Tree Node) to solve this problem
-Single-threaded version
-
-https://www.youtube.com/watch?v=oib-XsjFa-M
-https://www.youtube.com/watch?v=dOAxrhAUIhA
-*/
-#pragma GCC optimize "O3,omit-frame-pointer,inline"
+// #pragma GCC optimize "O3,omit-frame-pointer,inline"
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
 
+#include "thread_pool.hpp"
+
+
 using namespace std;
 ifstream in("input.txt");
 ofstream out("output.txt");
 
+const int THREADS = 7;
 const int L = 19;
 //const int L = 3;
 
@@ -121,7 +116,7 @@ int main()
         in >> ic[i];
     }
 
-    // diseases
+    // read diseases
     int _d;
     in >> _d;
     d = vector<vector<int>>(_d);
@@ -137,9 +132,16 @@ int main()
         d[i] = dm;
     }
 
-    // patients
+    // multi-threading
+    thread_pool pool(THREADS);
+
+    // read and process patients
     int _p;
     in >> _p;
+
+    // vector for results
+    vector<future<int>> results = vector<future<int>>(_p);
+
     for (int _pi=0; _pi < _p; _pi++) {
         int psize = 0;
         in >> psize;
@@ -150,7 +152,12 @@ int main()
             p[ps] = x - 1;
         }
 
-        int best = calculate(p);
+        // calculate using thread pool
+        results[_pi] = pool.submit(calculate, p);  // SLOWEST CALCULATION
+    }
+
+    for (int _pi=0; _pi < _p; _pi++) {
+        int best = results[_pi].get();
         cout << "[" << _pi << "/" << _p << "]> " << best << endl;
         out << best << endl;
     }
