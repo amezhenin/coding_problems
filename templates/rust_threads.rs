@@ -16,6 +16,16 @@ fn main() {
 
     println!("Spawning threads");
     for i in 0..n_jobs {
+
+        /**
+            Arc can be used to share data between threads
+            https://doc.rust-lang.org/beta/rust-by-example/std/arc.html
+
+            use std::sync::Arc;
+            let data = Arc::new(vec![1,2,3,4]);
+            let data = Arc::clone(&data); <- for each thread
+        */
+
         let tx = tx.clone();
         pool.execute(move || {
             println!("Thread {} started", i);

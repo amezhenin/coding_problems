@@ -29,6 +29,22 @@ fn main() {
     let y = parse_input!(inputs[1], i32);
 ```
 
+### Read file line by line
+``` 
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::fs::File;
+
+fn main() -> std::io::Result<()> {
+    let f = File::open("log.txt").unwrap();
+    let mut reader = BufReader::new(f);
+
+    let mut line = String::new();
+    let len = reader.read_line(&mut line).unwrap();
+    println!("First line is {} bytes long", len);
+    Ok(())
+}
+```
 
 ### HashMap
 ```
@@ -79,4 +95,18 @@ if let Some(pos) = vect.iter().position(|top| container <= *top) {
 ### Suppress warning
 ```
 #[allow(dead_code)]
+```
+
+### Untested
+
+```
+for line_iter in file.lines() {
+    let line : ~str = match line_iter { Ok(x) => x, Err(e) => fail!(e) };
+    // preprocess line for further processing, say split int chunks separated by spaces
+    let chunks: ~[&str] = line.split_terminator(|c: char| c.is_whitespace()).collect();
+    // then parse chunks
+    let terms: ~[int] = vec::from_fn(nterms, |i: uint| parse_str::<int>(chunks[i+1]));
+    ...
+}
+
 ```
