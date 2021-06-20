@@ -19,6 +19,15 @@ scanf("%d%d%d%d", &x, &y, &h, &v);
 int x,y,h,v,t;
 cin >> x >> y >> h >> v; cin.ignore();
 
+// empty vector + append
+vector<string> res;
+string nres = left[par] == cur ? "Left" : "Right";
+res.push_back(nres);
+
+if (res.size() == 0) {
+    res.push_back("Root");
+}
+
 ## Go
 
 package main

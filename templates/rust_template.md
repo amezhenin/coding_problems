@@ -59,6 +59,13 @@ for i in 0..end_position-1 {
 }
 ```
 
+### Vector with initialized values 
+``` 
+
+let mut parent = vec![-1; (n+1) as usize];
+
+```
+
 ### Read and parse into HashMap
 ```
     let ext_mime = (0..n).map(|_| {
