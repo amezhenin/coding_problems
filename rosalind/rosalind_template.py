@@ -15,7 +15,14 @@ def alg():
 
 
 if __name__ == "__main__":
-    with open("input.txt", "r") as sys.stdin:
-        with open("output.txt", "w") as sys.stdout:
+    fin = None
+    if fin:
+        fout = "out_" + fin
+    else:
+        fin = "input.txt"
+        fout = "output.txt"
+
+    with open(fin, "r") as sys.stdin:
+        with open(fout, "w") as sys.stdout:
             alg()
     pass
