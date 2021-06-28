@@ -1,3 +1,7 @@
+"""
+My initial algorithm for
+https://www.codingame.com/multiplayer/bot-programming/platinum-rift-episode-2
+"""
 from collections import deque
 import sys
 
