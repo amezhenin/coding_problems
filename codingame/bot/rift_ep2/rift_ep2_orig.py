@@ -25,7 +25,6 @@ class Zone:
         self.enemy = None
         self.owner_id = None
         self.owned = None
-        self.pods = None
         self.links = []
         self.visible = None
         self.attack = None

@@ -16,8 +16,10 @@ POD_COST = 20
 
 SCENT_DECAY = 0.2
 UNEXPLORED_SCENT_FACTOR = 10
-ATTACK_SCENT_FACTOR = 5
+ATTACK_SCENT_FACTOR = 100
 ENEMY_SCENT_FACTOR = 100
+PT_FACTOR = 50
+
 
 class Zone:
 
@@ -29,7 +31,6 @@ class Zone:
         self.enemy = None
         self.owner_id = None
         self.owned = None
-        self.pods = None
         self.links = []
         self.visible = None
         self.attack = None
@@ -72,6 +73,8 @@ class Zone:
             score += l.scent["enemy"] * ENEMY_SCENT_FACTOR
             if l == self.attack:
                 score += ATTACK_SCENT_FACTOR
+            if not l.owned:
+                score += l.pt * PT_FACTOR
             scents[l.id] = score
 
         return scents
@@ -80,7 +83,8 @@ class Zone:
     def decay_scent(self):
         # lower all scents
         for k, v in self.scent.items():
-            self.scent[k] = v * SCENT_DECAY
+            # self.scent[k] = v * SCENT_DECAY
+            self.scent[k] = max(0.0, v - SCENT_DECAY)
         # self.scent_score = self._calc_scent_score()
 
 
@@ -138,6 +142,7 @@ class Game:
             total_score = 0.0
             dest = {}
             scent_scores = z.scent_scores()
+            # log(f"Scent scores {scent_scores}")
             for l_id, score in scent_scores.items():
                 total_score += score
                 dest[l_id] = 0
@@ -149,6 +154,7 @@ class Game:
                     prob = scent_scores[l.id] / total_score
                     moves.append((r*prob, l.id))
                 moves.sort()
+                # log(f"mv {moves}")
                 best = moves[-1][1]
                 dest[best] += 1
 
