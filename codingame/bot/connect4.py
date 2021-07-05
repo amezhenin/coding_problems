@@ -2,8 +2,8 @@
 https://www.codingame.com/multiplayer/bot-programming/connect-4
 """
 
-TIMELIMIT = 100
-DEPTH = 100  # max is 63
+TIMELIMIT = 90  # 100
+DEPTH = 5  # max is 63
 
 """ ===============================   MCST algorithm   ==============================="""
 
@@ -12,6 +12,22 @@ DEPTH = 100  # max is 63
 import time
 import math
 import random
+
+
+def greedy_search(state):
+    """
+    Simple greedy algorithm to cover immediate loses
+    """
+    if state.isTerminal() is False:
+
+        actions = state.getPossibleActions()
+        state.turn += 1
+        for a in actions:
+            ns = state.takeAction(a)
+            if ns.getReward() != 0:
+                return a
+
+    return None
 
 
 def randomPolicy(state):
@@ -25,6 +41,9 @@ def randomPolicy(state):
 
 
 def limitPolicy(state):
+    """
+    Test policy that does rollout only to certain depth.
+    """
     i = 0
     while state.isTerminal() is False and i < DEPTH:
         try:
@@ -90,6 +109,7 @@ class MCST:
         if needDetails:
             return {"action": action, "expectedReward": bestChild.totalReward / bestChild.numVisits}
         else:
+            log(f"Rollouts {self.root.numVisits}")
             return action
 
     def executeRound(self):
@@ -294,8 +314,7 @@ class Game:
         self.my_id, self.opp_id = [int(i) for i in input().split()]
         log(f"My ID: {self.my_id}")
 
-        self.mcts = MCST(timeLimit=TIMELIMIT)
-
+        self.mcts = MCST(timeLimit=TIMELIMIT, rolloutPolicy=randomPolicy2)
 
 
     def next_turn(self):
@@ -323,10 +342,23 @@ class Game:
         # opponent's previous chosen column index (will be -1 for first player in the first turn)
         opp_previous_action = int(input())
 
-        best = self.mcts.search(initialState=state)
+        best = greedy_search(state)
+        if best is None:
+            best = self.mcts.search(initialState=state)
+        else:
+            log(f"Greedy result: {best.move}")
         t = int((time.time() - t) * 1000)
         log(f"Time: {t}")
         print(f"{best.move} {t}")
+
+
+if __name__ == "__main__":
+    # test_mcst_1()
+    game = Game()
+    while True:
+        game.next_turn()
+
+
 
 
 def test_mcst_1():
@@ -339,26 +371,34 @@ def test_mcst_1():
         ".1.100...",
         "101011..."
     ]
-    state = State(0, 10, board)
-    # state = State(1, 11, board)
-    # mcts = MCST(iterationLimit=1000, rolloutPolicy=limitPolicy)
-    mcts = MCST(timeLimit=100, rolloutPolicy=limitPolicy)
+    for i in range(2):
+        state = State(i, 10+i, board)
+        # state = State(1, 11, board)
+        # mcts = MCST(iterationLimit=1000, rolloutPolicy=limitPolicy)
+        mcts = MCST(timeLimit=100, rolloutPolicy=randomPolicy)
 
-    best = mcts.search(initialState=state)
-    assert best.move == 3
+        best = mcts.search(initialState=state)
+        assert best.move == 3
 
+def test_mcst_2():
+    board = [
+        ".........",
+        ".........",
+        ".........",
+        "..1.1....",
+        "..1.0....",
+        "..1.0.1..",
+        "0.0.10010"
+    ]
+    for i in range(2):
+        state = State(i, 10+i, board)
+        # state = State(1, 11, board)
+        # mcts = MCST(iterationLimit=1000, rolloutPolicy=limitPolicy)
+        mcts = MCST(timeLimit=100, rolloutPolicy=randomPolicy)
 
-if __name__ == "__main__":
-    # test_mcst_1()
-    game = Game()
-    while True:
-        game.next_turn()
+        best = mcts.search(initialState=state)
+        assert best.move == 2
 
-
-
-
-
-"""
 def test_state_1():
     board = [
         ".........",
@@ -564,5 +604,5 @@ def test_state_12():
 
     state = State(1, 0, board)
     assert state.getReward() == 1
-"""
+
 pass
