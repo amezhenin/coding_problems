@@ -314,7 +314,7 @@ class Game:
         self.my_id, self.opp_id = [int(i) for i in input().split()]
         log(f"My ID: {self.my_id}")
 
-        self.mcts = MCST(timeLimit=TIMELIMIT, rolloutPolicy=randomPolicy2)
+        self.mcts = MCST(timeLimit=TIMELIMIT)
 
 
     def next_turn(self):
