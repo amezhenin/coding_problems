@@ -12,18 +12,31 @@
 .1.......
 1........
 
+
+TODO:
+    * tests
+    * MCTS
+
  * */
 
 use std::io;
 use std::fmt;
 use std::panic;
-use itertools::assert_equal;
+use std::time::SystemTime;
+
 //use itertools::Itertools;
 
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
 }
+
+
+
+/**
+ * =========================   Monte-Carlo Tree Search   =========================
+ * */
+
 
 
 /**
@@ -85,6 +98,8 @@ struct State {
     turn: u8,
     board: Board
 }
+// FIXME: vvv
+#[allow(dead_code)]
 impl State {
     fn new(my_id: u8, turn: u8, board: Board) -> State {
         State {my_id, turn, board }
@@ -145,52 +160,75 @@ impl State {
 
 
     /**
-    def getReward(self):
-        # 1 for win, -1 for lose
-        # check horizontal line ----
-        b = self.board
-        for y in range(7):
-            for x in range(9 - 3):
-                if b[y][x:x + 4] in ("0000", "1111"):
-                    c = b[y][x]
-                    res = 1 if self.my_id == int(c) else -1
-                    return res
+     * Interface function for MCST
+     * Checks if any player has a winning combination on the board.
+     * 1 - you win. -1 - you lose, 0 - otherwise
+     * */
+    fn get_reward(&self) -> i8 {
+        let mut l:[i8;4] = [0, 0, 0, 0];
+        let b = &self.board;
 
-        # check vertical line |
-        for y in range(7 - 3):
-            for x in range(9):
-                l = b[y][x] + b[y + 1][x] + b[y + 2][x] + b[y + 3][x]
-                if l in ("0000", "1111"):
-                    c = b[y][x]
-                    res = 1 if self.my_id == int(c) else -1
-                    return res
+        // check horizontal line ----
+        for y in 0..7 {
+            for x in 0..9-3 {
+                l[0] = b.get(y, x + 0); l[1] = b.get(y, x + 1);
+                l[2] = b.get(y, x + 2); l[3] = b.get(y, x + 3);
+                if l == [0, 0, 0, 0] || l == [1, 1, 1, 1] {
+                    let res = if self.my_id == l[0] as u8 { 1 } else { -1 };
+                    return res;
+                }
+            }
+        }
 
-        # check diagonal line \
-        for y in range(7 - 3):
-            for x in range(9 - 3):
-                l = b[y][x] + b[y + 1][x + 1] + b[y + 2][x + 2] + b[y + 3][x + 3]
-                if l in ("0000", "1111"):
-                    c = b[y][x]
-                    res = 1 if self.my_id == int(c) else -1
-                    return res
+        // check vertical line |
+        for y in 0..7-3 {
+            for x in 0..9 {
+                l[0] = b.get(y + 0, x); l[1] = b.get(y + 1, x);
+                l[2] = b.get(y + 2, x); l[3] = b.get(y + 3, x);
+                if l == [0, 0, 0, 0] || l == [1, 1, 1, 1] {
+                    let res = if self.my_id == l[0] as u8 { 1 } else { -1 };
+                    return res;
+                }
+            }
+        }
 
-        # check diagonal line /
-        for y in range(7 - 3):
-            for x in range(9 - 3):
-                l = b[y + 3][x] + b[y + 2][x + 1] + b[y + 1][x + 2] + b[y][x + 3]
-                if l in ("0000", "1111"):
-                    c = b[y + 3][x]
-                    res = 1 if self.my_id == int(c) else -1
-                    return res
+        // check diagonal line \
+        for y in 0..7-3 {
+            for x in 0..9-3 {
+                l[0] = b.get(y + 0, x + 0); l[1] = b.get(y + 1, x + 1);
+                l[2] = b.get(y + 2, x + 2); l[3] = b.get(y + 3, x + 3);
+                if l == [0, 0, 0, 0] || l == [1, 1, 1, 1] {
+                    let res = if self.my_id == l[0] as u8 { 1 } else { -1 };
+                    return res;
+                }
+            }
+        }
 
-        return 0
+        // check diagonal line /
+        for y in 0..7-3 {
+            for x in 0..9-3 {
+                l[0] = b.get(y + 3, x + 0); l[1] = b.get(y + 3, x + 1);
+                l[2] = b.get(y + 1, x + 2); l[3] = b.get(y + 0, x + 3);
+                if l == [0, 0, 0, 0] || l == [1, 1, 1, 1] {
+                    let res = if self.my_id == l[0] as u8 { 1 } else { -1 };
+                    return res;
+                }
+            }
+        }
 
+        // default result
+        0
+    }
 
-    def isTerminal(self):
-        res = self.getReward() != 0 or self.getPossibleActions() == []
-        return res
+    /**
+     * Interface function for MCST
+     * Indicates the final state of the game.
+     * Win/Lose or no available moves
+     * */
+    fn is_terminal(&self) -> bool {
+       self.get_reward() != 0 || self.get_possible_actions().len() == 0
+    }
 
-    */
 
     fn validate_actions(&self, orig_actions: Vec<Action>) {
         let actions = self.get_possible_actions();
@@ -243,6 +281,8 @@ impl Game {
     }
 
     fn next_turn(&mut self) {
+        let t1 = SystemTime::now();
+
         let mut input_line = String::new();
         io::stdin().read_line(&mut input_line).unwrap();
         // starts from 0; As the game progresses, first player gets [0,2,4,...] and second player gets [1,3,5,...]
@@ -273,9 +313,10 @@ impl Game {
         let _opp_previous_action = parse_input!(input_line, i32);
 
 
-        //FIXME: best = self.mcts.search(initialState=state)
-        //       t = int((time.time() - t) * 1000)
-        println!("0");
+        let ms = t1.elapsed().unwrap().as_millis();
+        // number of visits/rollouts/simulations from the root node
+        let rs = 555;
+        println!("0 {} ms, {} rs", ms, rs);
 
     }
 }
