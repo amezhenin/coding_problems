@@ -263,10 +263,6 @@ class State:
         return 0
 
 
-    # def __eq__(self, other):
-    #     raise NotImplementedError()
-
-
     def validate_actions(self, orig_actions):
         actions = self.getPossibleActions()
         try:
