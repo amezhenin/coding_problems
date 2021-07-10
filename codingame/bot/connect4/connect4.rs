@@ -23,8 +23,15 @@ use std::io;
 use std::fmt;
 use std::panic;
 use std::time::SystemTime;
+use rand::Rng;
+//use rand::seq::SliceRandom;
 
 //use itertools::Itertools;
+
+// FIXME: vvv
+// TIMELIMIT = 90  # 100
+// DEPTH = 5  # max is 63
+
 
 
 macro_rules! parse_input {
@@ -38,6 +45,28 @@ macro_rules! parse_input {
  * */
 
 
+/**
+ * Simple greedy algorithm to cover immediate loses
+ * */
+fn greedy_search(state: State) -> Action {
+    let actions = state.get_possible_actions();
+
+    // let opponent move twice
+    let mut s = state.clone();
+    s.turn += 1;
+    for a in actions {
+        let ns = s.take_action(a);
+        if ns.get_reward() != 0 {
+            return a
+        }
+    }
+
+    // FIXME get_possible_actions called twice
+    let actions = state.get_possible_actions();
+    let mut rng = rand::thread_rng();
+    let idx = rng.gen_range(0..actions.len());
+    actions[idx]
+}
 
 /**
  * =========================   State and Board   =========================
@@ -92,7 +121,7 @@ impl fmt::Debug for Board {
     }
 }
 
-
+#[derive(Clone)]
 struct State {
     my_id: u8,
     turn: u8,
@@ -256,7 +285,7 @@ impl fmt::Debug for State {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Copy)]
 struct Action(i8);
 
 
@@ -314,9 +343,10 @@ impl Game {
 
 
         let ms = t1.elapsed().unwrap().as_millis();
+        let action = greedy_search(state);
         // number of visits/rollouts/simulations from the root node
         let rs = 555;
-        println!("0 {} ms, {} rs", ms, rs);
+        println!("{} {} ms, {} rs", action.0, ms, rs);
 
     }
 }
