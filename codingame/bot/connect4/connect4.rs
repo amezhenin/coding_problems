@@ -25,24 +25,15 @@ use std::panic;
 use std::time::SystemTime;
 use rand::Rng;
 //use rand::seq::SliceRandom;
-
 //use itertools::Itertools;
 
-// FIXME: vvv
-// TIMELIMIT = 90  # 100
-// DEPTH = 5  # max is 63
-
+//const TIMELIMIT:i32 = 90;  // 100
+const DEPTH:i32 = 5;  // max is 63
 
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
 }
-
-
-
-/**
- * =========================   Monte-Carlo Tree Search   =========================
- * */
 
 
 /**
@@ -60,13 +51,181 @@ fn greedy_search(state: State) -> Action {
             return a
         }
     }
+    state.get_random_action()
+}
 
-    // FIXME get_possible_actions called twice
-    let actions = state.get_possible_actions();
+/* Helper function that incapsulates random number generations (for possible tweaks) */
+fn random_choice(actions: Vec<Action>) -> Option<Action> {
+    if actions.len() == 0 {
+        return None
+    }
     let mut rng = rand::thread_rng();
     let idx = rng.gen_range(0..actions.len());
-    actions[idx]
+    Some(actions[idx])
 }
+
+
+/**
+ * =========================   Monte-Carlo Tree Search (MCTS)  =========================
+ * */
+
+// FIXME: vvv
+#[allow(dead_code)]
+fn random_policy(state: State) -> i8 {
+    let mut s = state;
+    while !s.is_terminal() {
+        let action = s.get_random_action();
+        s = s.take_action(action);
+    }
+    s.get_reward()
+}
+
+// FIXME: vvv
+#[allow(dead_code)]
+fn limit_policy(state: State) -> i8 {
+    let mut s = state;
+    let mut i = 0;
+    while !s.is_terminal() && i < DEPTH {
+        let action = s.get_random_action();
+        s = s.take_action(action);
+        i += 1;
+    }
+    s.get_reward()
+}
+
+// FIXME: vvv
+#[allow(dead_code)]
+struct TreeNode{
+    state: State,
+    is_terminal: bool,
+    is_fully_expanded: bool,
+    parent: Option<Box<TreeNode>>,
+    children: Vec<TreeNode>,  // NOTE: for cases with large branching factor Vec should be replaced with HashMap
+    num_visits: i32,
+    total_reward: i32,  // NOTE: change to float if rewards are floats
+}
+// FIXME: vvv
+#[allow(dead_code)]
+impl TreeNode {
+    fn new(state: State, parent: Option<Box<TreeNode>>) -> TreeNode {
+        let is_terminal = state.is_terminal();
+        TreeNode {
+            state,
+            is_terminal,
+            is_fully_expanded: is_terminal,
+            parent,
+            children: vec![],
+            num_visits: 0,
+            total_reward: 0
+        }
+    }
+}
+
+
+struct MCTS {
+    timelimit_ms: i32,
+    root: TreeNode
+}
+impl MCTS {
+    fn new(timelimit_ms: i32, init_state: State) -> MCTS {
+        // FIXME(future):
+        //      support iteration limit
+        //      custom exploration constant
+        //      custom rollout policy
+        MCTS {
+            timelimit_ms,
+            root: TreeNode::new(init_state, None)
+        }
+    }
+
+    fn search(&self) -> Action {
+//        while !timelimit {
+//            self.execute_round()
+//        }
+        /*
+        timeLimit = time.time() + self.timeLimit / 1000
+            while time.time() < timeLimit:
+                self.executeRound()
+
+        bestChild = self.getBestChild(self.root, 0)
+        action=(action for action, node in self.root.children.items() if node is bestChild).__next__()
+        if needDetails:
+            return {"action": action, "expectedReward": bestChild.totalReward / bestChild.numVisits}
+        else:
+            log(f"Rollouts {self.root.numVisits}")
+            return action
+        */
+    }
+}
+/*
+
+class MCST:
+
+    def search(self, initialState, needDetails=False):
+        self.root = treeNode(initialState, None)
+
+        if self.limitType == 'time':
+
+        else:
+            for i in range(self.searchLimit):
+                self.executeRound()
+
+        bestChild = self.getBestChild(self.root, 0)
+        action=(action for action, node in self.root.children.items() if node is bestChild).__next__()
+        if needDetails:
+            return {"action": action, "expectedReward": bestChild.totalReward / bestChild.numVisits}
+        else:
+            log(f"Rollouts {self.root.numVisits}")
+            return action
+
+    def executeRound(self):
+        """
+            execute a selection-expansion-simulation-backpropagation round
+        """
+        node = self.selectNode(self.root)
+        reward = self.rollout(node.state)
+        self.backpropogate(node, reward)
+
+    def selectNode(self, node):
+        while not node.isTerminal:
+            if node.isFullyExpanded:
+                node = self.getBestChild(node, self.explorationConstant)
+            else:
+                return self.expand(node)
+        return node
+
+    def expand(self, node):
+        actions = node.state.getPossibleActions()
+        for action in actions:
+            if action not in node.children:
+                newNode = treeNode(node.state.takeAction(action), node)
+                node.children[action] = newNode
+                if len(actions) == len(node.children):
+                    node.isFullyExpanded = True
+                return newNode
+
+        raise Exception("Should never reach here")
+
+    def backpropogate(self, node, reward):
+        while node is not None:
+            node.numVisits += 1
+            node.totalReward += reward
+            node = node.parent
+
+    def getBestChild(self, node, explorationValue):
+        bestValue = float("-inf")
+        bestNodes = []
+        for child in node.children.values():
+            nodeValue = node.state.getCurrentPlayer() * child.totalReward / child.numVisits + explorationValue * math.sqrt(
+                2 * math.log(node.numVisits) / child.numVisits)
+            if nodeValue > bestValue:
+                bestValue = nodeValue
+                bestNodes = [child]
+            elif nodeValue == bestValue:
+                bestNodes.append(child)
+        return random.choice(bestNodes)
+*/
+
 
 /**
  * =========================   State and Board   =========================
@@ -153,6 +312,16 @@ impl State {
         }
         actions
     }
+
+    /* Helper function for random policy and greedy_search */
+    fn get_random_action(&self) -> Action {
+        let actions = self.get_possible_actions();
+        if let Some(action) = random_choice(actions) {
+            return action;
+        }
+        panic!("State has no possible actions: {:?}", self)
+    }
+
 
     /** Interface function for MCST */
     fn take_action(&self, action: Action) -> State {
