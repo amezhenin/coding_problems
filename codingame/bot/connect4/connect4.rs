@@ -70,29 +70,27 @@ fn random_choice(actions: Vec<Action>) -> Option<Action> {
  * =========================   Monte-Carlo Tree Search (MCTS)  =========================
  * */
 
-// FIXME: vvv
-#[allow(dead_code)]
-fn random_policy(state: State) -> i8 {
+fn random_policy(state: &State) -> i8 {
     let mut s = state;
+    let mut tmp:State;  // lifetime hack?
     while !s.is_terminal() {
         let action = s.get_random_action();
-        s = s.take_action(action);
+        tmp = s.take_action(action);
+        s = &tmp;
     }
     s.get_reward()
 }
 
-// FIXME: vvv
-#[allow(dead_code)]
-fn limit_policy(state: State) -> i8 {
-    let mut s = state;
-    let mut i = 0;
-    while !s.is_terminal() && i < DEPTH {
-        let action = s.get_random_action();
-        s = s.take_action(action);
-        i += 1;
-    }
-    s.get_reward()
-}
+//fn limit_policy(state: &State) -> i8 {
+//    let mut s = state;
+//    let mut i = 0;
+//    while !s.is_terminal() && i < DEPTH {
+//        let action = s.get_random_action();
+//        s = &s.take_action(action);
+//        i += 1;
+//    }
+//    s.get_reward()
+//}
 
 //#[derive(Clone)]
 struct TreeNode{
@@ -123,10 +121,12 @@ impl TreeNode {
             let actions = self.state.get_possible_actions();
             for a in actions {
                 let child_state = self.state.take_action(a);
-                let parent = Some(Box::new(self)); // FIXME: references or clones? <<<<<<<<<<<<<<<<<<<<<<<
-                let child_node = TreeNode::new(child_state, parent);
-//                let child_node = TreeNode::new(child_state, None); // FIXME: references or clones? <<<<<<<<<<<<<<<<<<<<<<<
+//                let parent = Some(Box::new(self));      // FIXME: references or clones? <<<<<<<<<<<<<<<<<<<<<<<
+//                let child_node = TreeNode::new(child_state, parent);
+                // FIXME: placeholder, see two lines above
+                let child_node = TreeNode::new(child_state, None);
                 self.children.push(child_node);
+
             }
             self.is_expanded = true;
         }
@@ -187,48 +187,56 @@ impl MCTS {
     /**
      *  execute a selection-expansion-simulation-backpropagation round
      * */
-    fn execute_round(&self) {
-        let node: &TreeNode = self.select_node(&self.root);
-        let reward = random_policy(node.state);
+    fn execute_round(&mut self) {
+        let root = &mut self.root;
+        let node = MCTS::select_node(root);
+        let reward = 1;//random_policy(&node.state);
         node.backpropagate(reward as i32);
     }
 
-    fn select_node(&self, start: &TreeNode) -> &TreeNode {
-        let mut node:&TreeNode = start;
-        while !node.is_terminal {
-            if node.is_expanded {
-                node = self.get_best_child(&node, EXPLORATION);
-            } else {
-                node.expand();
-                return &(node.children[0]);
-            }
+    fn select_node<'a>(start: &'a mut TreeNode) -> &'a mut TreeNode {
+//        let node = start;
+//        while !node.is_terminal {
+//            if node.is_expanded {
+//                let tmp = MCTS::get_best_child(node, EXPLORATION);
+//                node = &mut tmp;
+//            } else {
+//                node.expand();
+//                return &mut (node.children[0]);
+//            }
+//        }
+//        return node
+        if start.is_expanded {
+            let tmp = MCTS::get_best_child(start, EXPLORATION);
+            return MCTS::select_node(tmp);
         }
-        return node
+        start.expand();
+        return &mut (start.children[0]);
     }
 
 
-    fn get_best_child(&self, node: &TreeNode, exploration_value: f32) -> &TreeNode {
+    fn get_best_child(node: &TreeNode, exploration_value: f32) -> &mut TreeNode {
         let mut best_val:f32 = std::f32::MAX;
         // FIXME: track multiple best nodes
         // let mut best_nodes: Vec<TreeNode> = vec![];
-        let mut best_node:Option<TreeNode> = None;
+        let mut best_node:Option<&mut TreeNode> = None;
 
         let plr:f32 = node.state.get_current_player() as f32;
         let nnvl:f32 = (node.num_visits as f32).ln();  // natural log
-        for child in node.children {
+        for mut child in &node.children {
             // FIXME: do we need 2.0 here ?
             let cur_val:f32 = plr * child.total_reward as f32 / child.num_visits as f32
                 + exploration_value * (2.0 * nnvl / child.num_visits as f32).sqrt();
             if cur_val > best_val {
                 best_val = cur_val;
-                best_node = Some(child);
+                best_node = Some(&mut child);
                 // best_nodes = vec![child];
             } /* else if cur_val == best_val {
                 best_nodes.push(child);
             }*/
         }
         // random_choice(best_nodes)
-        &best_node.unwrap()
+        &mut best_node.unwrap()
     }
 }
 
