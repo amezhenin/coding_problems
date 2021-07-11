@@ -16,6 +16,7 @@
 TODO:
     * tests
     * MCTS
+    * best child: do we need 2.0 here ?
 
  * */
 
@@ -29,7 +30,7 @@ use rand::Rng;
 
 //const TIMELIMIT:i32 = 90;  // 100
 const DEPTH:i32 = 5;  // max is 63
-
+const EXPLORATION:f32 = 0.7;
 
 macro_rules! parse_input {
     ($x:expr, $t:ident) => ($x.trim().parse::<$t>().unwrap())
@@ -93,30 +94,51 @@ fn limit_policy(state: State) -> i8 {
     s.get_reward()
 }
 
-// FIXME: vvv
-#[allow(dead_code)]
+//#[derive(Clone)]
 struct TreeNode{
     state: State,
     is_terminal: bool,
-    is_fully_expanded: bool,
+    is_expanded: bool,
     parent: Option<Box<TreeNode>>,
     children: Vec<TreeNode>,  // NOTE: for cases with large branching factor Vec should be replaced with HashMap
     num_visits: i32,
     total_reward: i32,  // NOTE: change to float if rewards are floats
 }
-// FIXME: vvv
-#[allow(dead_code)]
 impl TreeNode {
     fn new(state: State, parent: Option<Box<TreeNode>>) -> TreeNode {
         let is_terminal = state.is_terminal();
         TreeNode {
             state,
             is_terminal,
-            is_fully_expanded: is_terminal,
+            is_expanded: is_terminal,
             parent,
             children: vec![],
             num_visits: 0,
             total_reward: 0
+        }
+    }
+
+    fn expand(&mut self) {
+        if !self.is_expanded {
+            let actions = self.state.get_possible_actions();
+            for a in actions {
+                let child_state = self.state.take_action(a);
+                let parent = Some(Box::new(self)); // FIXME: references or clones? <<<<<<<<<<<<<<<<<<<<<<<
+                let child_node = TreeNode::new(child_state, parent);
+//                let child_node = TreeNode::new(child_state, None); // FIXME: references or clones? <<<<<<<<<<<<<<<<<<<<<<<
+                self.children.push(child_node);
+            }
+            self.is_expanded = true;
+        }
+        //self.children[0] // FIXME: do we need to return anything here?
+    }
+
+
+    fn backpropagate(&mut self, reward: i32) {
+        self.num_visits += 1;
+        self.total_reward += reward;
+        if let Some(n) = &mut self.parent {
+            n.backpropagate(reward);  // FIXME: is it working?
         }
     }
 }
@@ -138,10 +160,13 @@ impl MCTS {
         }
     }
 
-    fn search(&self) -> Action {
-//        while !timelimit {
-//            self.execute_round()
+//    fn search(&self) -> Action {
+//        let t1 = SystemTime::now();
+//
+//        while t1.elapsed().unwrap().as_millis() < (self.timelimit_ms as u128) {
+//            self.execute_round();
 //        }
+
         /*
         timeLimit = time.time() + self.timeLimit / 1000
             while time.time() < timeLimit:
@@ -155,76 +180,57 @@ impl MCTS {
             log(f"Rollouts {self.root.numVisits}")
             return action
         */
+//    }
+
+
+
+    /**
+     *  execute a selection-expansion-simulation-backpropagation round
+     * */
+    fn execute_round(&self) {
+        let node: &TreeNode = self.select_node(&self.root);
+        let reward = random_policy(node.state);
+        node.backpropagate(reward as i32);
+    }
+
+    fn select_node(&self, start: &TreeNode) -> &TreeNode {
+        let mut node:&TreeNode = start;
+        while !node.is_terminal {
+            if node.is_expanded {
+                node = self.get_best_child(&node, EXPLORATION);
+            } else {
+                node.expand();
+                return &(node.children[0]);
+            }
+        }
+        return node
+    }
+
+
+    fn get_best_child(&self, node: &TreeNode, exploration_value: f32) -> &TreeNode {
+        let mut best_val:f32 = std::f32::MAX;
+        // FIXME: track multiple best nodes
+        // let mut best_nodes: Vec<TreeNode> = vec![];
+        let mut best_node:Option<TreeNode> = None;
+
+        let plr:f32 = node.state.get_current_player() as f32;
+        let nnvl:f32 = (node.num_visits as f32).ln();  // natural log
+        for child in node.children {
+            // FIXME: do we need 2.0 here ?
+            let cur_val:f32 = plr * child.total_reward as f32 / child.num_visits as f32
+                + exploration_value * (2.0 * nnvl / child.num_visits as f32).sqrt();
+            if cur_val > best_val {
+                best_val = cur_val;
+                best_node = Some(child);
+                // best_nodes = vec![child];
+            } /* else if cur_val == best_val {
+                best_nodes.push(child);
+            }*/
+        }
+        // random_choice(best_nodes)
+        &best_node.unwrap()
     }
 }
-/*
-
-class MCST:
-
-    def search(self, initialState, needDetails=False):
-        self.root = treeNode(initialState, None)
-
-        if self.limitType == 'time':
-
-        else:
-            for i in range(self.searchLimit):
-                self.executeRound()
-
-        bestChild = self.getBestChild(self.root, 0)
-        action=(action for action, node in self.root.children.items() if node is bestChild).__next__()
-        if needDetails:
-            return {"action": action, "expectedReward": bestChild.totalReward / bestChild.numVisits}
-        else:
-            log(f"Rollouts {self.root.numVisits}")
-            return action
-
-    def executeRound(self):
-        """
-            execute a selection-expansion-simulation-backpropagation round
-        """
-        node = self.selectNode(self.root)
-        reward = self.rollout(node.state)
-        self.backpropogate(node, reward)
-
-    def selectNode(self, node):
-        while not node.isTerminal:
-            if node.isFullyExpanded:
-                node = self.getBestChild(node, self.explorationConstant)
-            else:
-                return self.expand(node)
-        return node
-
-    def expand(self, node):
-        actions = node.state.getPossibleActions()
-        for action in actions:
-            if action not in node.children:
-                newNode = treeNode(node.state.takeAction(action), node)
-                node.children[action] = newNode
-                if len(actions) == len(node.children):
-                    node.isFullyExpanded = True
-                return newNode
-
-        raise Exception("Should never reach here")
-
-    def backpropogate(self, node, reward):
-        while node is not None:
-            node.numVisits += 1
-            node.totalReward += reward
-            node = node.parent
-
-    def getBestChild(self, node, explorationValue):
-        bestValue = float("-inf")
-        bestNodes = []
-        for child in node.children.values():
-            nodeValue = node.state.getCurrentPlayer() * child.totalReward / child.numVisits + explorationValue * math.sqrt(
-                2 * math.log(node.numVisits) / child.numVisits)
-            if nodeValue > bestValue:
-                bestValue = nodeValue
-                bestNodes = [child]
-            elif nodeValue == bestValue:
-                bestNodes.append(child)
-        return random.choice(bestNodes)
-*/
 
 
 /**
@@ -286,8 +292,6 @@ struct State {
     turn: u8,
     board: Board
 }
-// FIXME: vvv
-#[allow(dead_code)]
 impl State {
     fn new(my_id: u8, turn: u8, board: Board) -> State {
         State {my_id, turn, board }
@@ -321,6 +325,7 @@ impl State {
         }
         panic!("State has no possible actions: {:?}", self)
     }
+
 
 
     /** Interface function for MCST */
